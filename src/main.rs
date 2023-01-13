@@ -1,49 +1,62 @@
 use bevy::prelude::*;
+use std::f32::consts::PI;
+use bevy_mod_picking::{PickingCameraBundle};
+use render_3d::CheckersRenderer3dPlugin;
+use input_3d::CheckersInput3dPlugin;
+use config::*;
+use state::{GameState, CheckersState};
+use logic::CheckersGameLogicPlugin;
+use checkers_events::CheckersEventsPlugin;
+
+mod render_3d;
+mod input_3d;
+mod config;
+mod state;
+mod logic;
+mod checkers_events;
 
 
 fn main() {
+    let board_config = BoardConfig{..default()};
+    let checkers_state = CheckersState::new(board_config.board_dim);
     App::new()
-        .add_plugins(DefaultPlugins)
-        .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor { width: 1920., height: 1080., title: String::from("Checkers"), mode: WindowMode::Fullscreen, ..default()},
+            ..default()
+        }))
+        .add_state(GameState::Input)
+        .insert_resource(ClearColor(Color::BLACK))
+        .insert_resource(board_config)
+        .insert_resource(checkers_state)
         .add_startup_system(setup)
+        .add_plugin(CheckersGameLogicPlugin)
+        .add_plugin(CheckersRenderer3dPlugin)
+        .add_plugin(CheckersInput3dPlugin)
+        .add_plugin(CheckersEventsPlugin)
         .run();
 }
 
-/// set up a simple 3D scene
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
 
-    for i in -5..5 {
-        // box
-        commands.spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Box{min_x: i as f32 * 1.2 + 0.2, max_x: i as f32 * 1.2 + 1.0 + 0.2, min_y: -0.2, max_y: 0.2, min_z: -1.0, max_z: 1.0})),
-            material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-            transform: Transform::from_scale(Vec3::ONE * 1.0),
-            ..default()
-        });
-    }
-
-    // commands.insert_resource(AmbientLight{
-    //     color: Color::rgb(1.0, 1.0, 1.0).into(),
-    //     brightness: 1.0,
-    // });
-
+// Set up camera and lighting
+fn setup(mut commands: Commands) {
     // light
     commands.spawn(PointLightBundle {
         point_light: PointLight {
-            intensity: 20000.0,
+            intensity: 10000.0,
             shadows_enabled: true,
             ..default()
         },
-        transform: Transform::from_xyz(0.0, 10.0, 0.0),
+        transform: Transform::from_xyz(5.0, 10.0, -5.0),
         ..default()
     });
+
+    let distance = 12.5;
+    let angle = PI / 4.0;
     // camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 10.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+    commands.spawn((Camera3dBundle {
+        transform: Transform::from_xyz(0.0, distance * angle.sin(), distance * angle.cos()).looking_at(Vec3::ZERO, Vec3::Y),
+            ..default()
+        },
+        PickingCameraBundle::default(),
+    ));
 }
