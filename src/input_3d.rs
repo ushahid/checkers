@@ -6,7 +6,6 @@ use crate::{
 };
 
 
-
 pub struct CheckersInput3dPlugin;
 
 
@@ -16,8 +15,8 @@ impl Plugin for CheckersInput3dPlugin {
         .add_plugin(InteractablePickingPlugin)
         .add_system_set(SystemSet::on_enter(GameState::Input).with_system(mark_pickable_pieces))
         .add_system_set(SystemSet::on_exit(GameState::Input).with_system(unmark_pickable_pieces))
-        .add_system(handle_picking_events)
-        .add_system(handle_move)
+        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_picking_events))
+        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_move))
         .add_system(bevy::window::close_on_esc);
     }
 }
@@ -30,7 +29,7 @@ fn dim_material(material_handle: &Handle<StandardMaterial>, materials: &mut ResM
 }
 
 
-fn handle_move(mut move_event: EventReader<PieceMoveEvent>, query: Query<&Handle<StandardMaterial>, With<BoardSquareComponent>>, mut materials: ResMut<Assets<StandardMaterial>>,){
+fn handle_move(mut move_event: EventReader<PieceMoveEvent>, query: Query<&Handle<StandardMaterial>, With<BoardSquareComponent>>, mut materials: ResMut<Assets<StandardMaterial>>){
     const HOVER_LIGHTNESS_FACTOR: f32 = 0.6;
     for event in move_event.iter(){
         if let Ok(material_handle) = query.get(event.sq_id) {

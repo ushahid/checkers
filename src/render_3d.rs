@@ -12,12 +12,14 @@ pub struct CheckersRenderer3dPlugin;
 
 impl Plugin for CheckersRenderer3dPlugin {
     fn build(&self, app: &mut App){
-        app.add_startup_system(setup_board)
-        .add_system(handle_piece_selection)
-        .add_system(handle_piece_deselection)
-        .add_system(handle_move)
-        .add_system(handle_kill)
-        .add_system(handle_upgrade);
+        app
+        .insert_resource(ClearColor(Color::BLACK))
+        .add_startup_system(setup_board)
+        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_piece_selection))
+        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_piece_deselection))
+        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_move))
+        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_kill))
+        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_upgrade));
     }
 }
 

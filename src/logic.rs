@@ -7,9 +7,11 @@ use crate::{
 
 pub struct CheckersGameLogicPlugin;
 
+
 impl Plugin for CheckersGameLogicPlugin {
     fn build(&self, app: &mut App) {
         app
+        .add_state(GameState::Input)
         .add_system_set(SystemSet::on_update(GameState::TryMove).with_system(validate_move))
         .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_move));
     }
@@ -18,7 +20,6 @@ impl Plugin for CheckersGameLogicPlugin {
 
 // check for any possible kills
 fn check_kills(_checkers_state: &CheckersState) -> Option<(usize, usize)>{
-
     return None;
 }
 
@@ -118,6 +119,7 @@ fn validate_move(
 
 fn handle_move(mut move_event: EventReader<PieceMoveEvent>, mut checkers_state: ResMut<CheckersState>, mut game_state: ResMut<State<GameState>>, mut kill_writer: EventWriter<KillPiece>, mut upgrade_writer: EventWriter<UpgradePiece>){
     for ev in move_event.iter(){
+        // update state
         checkers_state.board[ev.to_row][ev.to_col] = checkers_state.board[ev.from_row][ev.from_col];
         checkers_state.board[ev.from_row][ev.from_col] = None;
         
@@ -132,7 +134,7 @@ fn handle_move(mut move_event: EventReader<PieceMoveEvent>, mut checkers_state: 
                 if piece_in_middle.col != checkers_state.turn {
                     checkers_state.board[mid_row][mid_col] = None;
                     kill_writer.send(KillPiece { row: mid_row, col: mid_col });
-                    info!("Piece killed at: ({}, {})", mid_row, mid_col);
+                    info!("{:?} killed at: ({}, {})", piece_in_middle.typ, mid_row, mid_col);
                 } else {
                     panic!("Killing own piece");
                 }
@@ -148,10 +150,14 @@ fn handle_move(mut move_event: EventReader<PieceMoveEvent>, mut checkers_state: 
             info!("Made king at: ({}, {})", ev.to_row, ev.to_col);
         }
 
+        // switch turn
         checkers_state.turn = match checkers_state.turn {
             PieceColor::Red => PieceColor::Black,
             PieceColor::Black => PieceColor::Red
         };
+
+        info!("{:?}'s turn", checkers_state.turn);
+
         game_state.set(GameState::Input).unwrap();
     }
 }

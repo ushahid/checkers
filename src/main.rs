@@ -4,7 +4,7 @@ use bevy_mod_picking::{PickingCameraBundle};
 use render_3d::CheckersRenderer3dPlugin;
 use input_3d::CheckersInput3dPlugin;
 use config::*;
-use state::{GameState, CheckersState};
+use state::CheckersState;
 use logic::CheckersGameLogicPlugin;
 use checkers_events::CheckersEventsPlugin;
 
@@ -21,11 +21,14 @@ fn main() {
     let checkers_state = CheckersState::new(board_config.board_dim);
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor { width: 1920., height: 1080., title: String::from("Checkers"), mode: WindowMode::Fullscreen, ..default()},
+            window: WindowDescriptor {
+                width: 1920.,
+                height: 1080.,
+                title: String::from("Checkers"),
+                mode: WindowMode::BorderlessFullscreen, ..default()
+            },
             ..default()
         }))
-        .add_state(GameState::Input)
-        .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(board_config)
         .insert_resource(checkers_state)
         .add_startup_system(setup)
