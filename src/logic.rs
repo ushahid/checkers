@@ -48,44 +48,26 @@ fn is_valid_move(from_row: usize, from_col: usize, to_row: usize, to_col: usize,
     }
 
     if let Some(moving_piece) = checkers_state.board[from_row][from_col]{
-        // check if man moving more than 1 step
-        if from_row.abs_diff(to_row) > 1 && moving_piece.typ == PieceType::Man {
-            // check if kill with man
+        // check if piece moving more than 1 step
+        if from_row.abs_diff(to_row) > 1 {
+            // check if kill
             if from_row.abs_diff(to_row) == 2 {
                 let row_delta: i32 = ((from_row as i32) - (to_row as i32)).signum();
                 let col_delta: i32 = ((from_col as i32) - (to_col as i32)).signum();
                 if let Some(piece_in_middle) = checkers_state.board[(from_row as i32 - row_delta) as usize][(from_col as i32 - col_delta) as usize]{
                     if piece_in_middle.col == checkers_state.turn{
-                        info!{"Invalid move! Jumping over own piece with man"}
+                        info!{"Invalid move! Jumping over own piece is not possible"}
                         return false;
                     }
                 } else {
-                    info!{"Invalid move! Cannot move two spaces with man"}
+                    info!{"Invalid move! Cannot move two spaces unless it is a kill"}
                     return false;
                 }
             } else {
-                info!{"Invalid move! Moving more than 2 spaces with man"}
+                info!{"Invalid move! Moving more than 2 spaces is not possible"}
                 return false;
             }
         }
-
-        // check if king moving more than 2 steps
-        if from_row.abs_diff(to_row) > 2 && moving_piece.typ == PieceType::King {
-            info!{"Invalid move! Moving more than 2 spaces with king"}
-            return false;
-        }
-
-         // king is moving 2 steps but own piece is blocking
-         if moving_piece.typ == PieceType::King && from_row.abs_diff(to_row) == 2{
-            let row_delta: i32 = ((from_row as i32) - (to_row as i32)).signum();
-            let col_delta: i32 = ((from_col as i32) - (to_col as i32)).signum();
-            if let Some(piece_in_middle) = checkers_state.board[(from_row as i32 - row_delta) as usize][(from_col as i32 - col_delta) as usize] {
-                if piece_in_middle.col == checkers_state.turn{
-                    info!{"Invalid move! King cannot jump over own piece"}
-                    return false;
-                }
-            }
-         }
 
         // If man moving in the wrong direction
         if moving_piece.typ == PieceType::Man && (((from_row as i32 - to_row as i32) > 0 && moving_piece.col != PieceColor::Black) || (((from_row as i32) - (to_row as i32) < 0 && moving_piece.col != PieceColor::Red))){
@@ -102,7 +84,7 @@ fn is_valid_move(from_row: usize, from_col: usize, to_row: usize, to_col: usize,
             }
         }
     }
-    info!("Valid move...");
+    info!("Valid move from ({}, {}) to ({}, {})", from_row, from_col, to_row, to_col);
     return true;
 }
 
@@ -163,7 +145,7 @@ fn handle_move(mut move_event: EventReader<PieceMoveEvent>, mut checkers_state: 
             moving_piece.typ = PieceType::King;
             upgrade_writer.send(UpgradePiece { piece_id: ev.piece_id });
             checkers_state.board[ev.to_row][ev.to_col] = Some(moving_piece);
-            
+            info!("Made king at: ({}, {})", ev.to_row, ev.to_col);
         }
 
         checkers_state.turn = match checkers_state.turn {

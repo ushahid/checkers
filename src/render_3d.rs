@@ -55,7 +55,7 @@ fn handle_upgrade(
     for event in upgrade_event.iter(){
         let sq_dim: f32 = (board_config.world_dim - (board_config.border_size * 2.0)) / board_config.board_dim as f32;
         let scaled_sq_dim: f32 = board_config.piece_scale * sq_dim;
-        if let Ok((mut piece_component)) = query.get_mut(event.piece_id){
+        if let Ok(mut piece_component) = query.get_mut(event.piece_id){
             piece_component.typ = PieceType::King;
             let color = match piece_component.color {
                 PieceColor::Black => Color::rgb(0.25, 0.25, 0.25),
