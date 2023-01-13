@@ -1,2 +1,10 @@
 # checkers
-A game of checkers written in bevy / rust
+A simple game of American checkers written in bevy / rust
+
+
+## ToDo
+- Add multikill
+- Add mandatory kill
+- Add sound
+- Add menu
+- Add AI
