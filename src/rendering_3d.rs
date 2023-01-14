@@ -1,22 +1,24 @@
-use bevy::prelude::*;
+use bevy::{prelude::*};
 use crate::{
     config::BoardConfig,
     state::*,
-    checkers_events::{PieceSelectEvent, PieceDeselectEvent, PieceMoveEvent, KillPiece, UpgradePiece}
+    checkers_events::{PieceSelectEvent, PieceDeselectEvent, PieceMoveEvent, KillPieceEvent, UpgradePieceEvent, HighlightEntityEvent, RemoveHighlightEntityEvent}
 };
 
 
 
-pub struct CheckersRenderer3dPlugin;
+pub struct CheckersRendering3dPlugin;
 
 
-impl Plugin for CheckersRenderer3dPlugin {
+impl Plugin for CheckersRendering3dPlugin {
     fn build(&self, app: &mut App){
         app
         .insert_resource(ClearColor(Color::BLACK))
         .add_startup_system(setup_board)
         .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_piece_selection))
         .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_piece_deselection))
+        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_add_highlight))
+        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_remove_highlight))
         .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_move))
         .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_kill))
         .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_upgrade));
@@ -44,9 +46,47 @@ pub struct BoardSquareComponent {
 }
 
 
+fn dim_material(material_handle: &Handle<StandardMaterial>, materials: &mut ResMut<Assets<StandardMaterial>>, lightness_factor: f32){
+    let base_col = &mut (*materials).get_mut(material_handle).unwrap().base_color;
+    let color_data = base_col.as_hsla_f32();
+    *base_col = Color::Hsla { hue: color_data[0], saturation: color_data[1], lightness: color_data[2] * lightness_factor, alpha: color_data[3]}.as_rgba();
+}
+
+
+fn handle_add_highlight(
+    mut highlight_event: EventReader<HighlightEntityEvent>,
+    board_config: Res<BoardConfig>, query: Query<&Handle<StandardMaterial>>,
+    mut materials: ResMut<Assets<StandardMaterial>>
+){
+    for ev in highlight_event.iter(){
+        if let Ok(material_handle) = query.get(ev.entity_id) {
+            dim_material(material_handle, &mut materials, board_config.hover_highlight_strength);
+        } else {
+            panic!("Invalid entity handle");
+        }
+    }
+}
+
+
+fn handle_remove_highlight(
+    mut remove_highlight_event: EventReader<RemoveHighlightEntityEvent>,
+    board_config: Res<BoardConfig>, query: Query<&Handle<StandardMaterial>>,
+    mut materials: ResMut<Assets<StandardMaterial>>
+){
+    for ev in remove_highlight_event.iter(){
+        if let Ok(material_handle) = query.get(ev.entity_id) {
+            dim_material(material_handle, &mut materials, 1.0 / board_config.hover_highlight_strength);
+        } else {
+            panic!("Invalid entity handle");
+        }
+    }
+}
+
+
+
 fn handle_upgrade(
     mut commands: Commands,
-    mut upgrade_event: EventReader<UpgradePiece>,
+    mut upgrade_event: EventReader<UpgradePieceEvent>,
     mut query: Query<&mut PieceComponent>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -83,7 +123,7 @@ fn handle_upgrade(
 }
 
 
-fn handle_kill(mut commands: Commands, mut kill_event: EventReader<KillPiece>, query: Query<(Entity, &PieceComponent)>){
+fn handle_kill(mut commands: Commands, mut kill_event: EventReader<KillPieceEvent>, query: Query<(Entity, &PieceComponent)>){
     for event in kill_event.iter(){
         for (entity, piece_component) in query.iter(){
             if piece_component.row == event.row && piece_component.col == event.col {

@@ -6,13 +6,24 @@ pub struct CheckersEventsPlugin;
 impl Plugin for CheckersEventsPlugin {
     fn build(&self, app: &mut App){
         app
-        .add_event::<UpgradePiece>()
-        .add_event::<KillPiece>()
+        .add_event::<HighlightEntityEvent>()
+        .add_event::<RemoveHighlightEntityEvent>()
+        .add_event::<UpgradePieceEvent>()
+        .add_event::<KillPieceEvent>()
         .add_event::<PieceMoveEvent>()
         .add_event::<TryMoveEvent>()
         .add_event::<PieceSelectEvent>()
         .add_event::<PieceDeselectEvent>();
     }
+}
+
+
+pub struct HighlightEntityEvent {
+    pub entity_id: Entity
+}
+
+pub struct RemoveHighlightEntityEvent {
+    pub entity_id: Entity
 }
 
 
@@ -34,7 +45,7 @@ pub struct PieceMoveEvent{
     pub sq_id: Entity
 }
 
-pub struct KillPiece {
+pub struct KillPieceEvent {
     pub row: usize,
     pub col: usize
 }
@@ -49,6 +60,6 @@ pub struct PieceDeselectEvent{
 }
 
 
-pub struct UpgradePiece {
+pub struct UpgradePieceEvent {
     pub piece_id: Entity
 }

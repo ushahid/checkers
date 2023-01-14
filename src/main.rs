@@ -1,14 +1,14 @@
 use bevy::prelude::*;
 use std::f32::consts::PI;
 use bevy_mod_picking::{PickingCameraBundle};
-use render_3d::CheckersRenderer3dPlugin;
+use rendering_3d::CheckersRendering3dPlugin;
 use input_3d::CheckersInput3dPlugin;
 use config::*;
 use state::CheckersState;
 use logic::CheckersGameLogicPlugin;
 use checkers_events::CheckersEventsPlugin;
 
-mod render_3d;
+mod rendering_3d;
 mod input_3d;
 mod config;
 mod state;
@@ -33,7 +33,7 @@ fn main() {
         .insert_resource(checkers_state)
         .add_startup_system(setup)
         .add_plugin(CheckersGameLogicPlugin)
-        .add_plugin(CheckersRenderer3dPlugin)
+        .add_plugin(CheckersRendering3dPlugin)
         .add_plugin(CheckersInput3dPlugin)
         .add_plugin(CheckersEventsPlugin)
         .run();
@@ -57,7 +57,7 @@ fn setup(mut commands: Commands) {
     let angle = PI / 4.0;
     // camera
     commands.spawn((Camera3dBundle {
-        transform: Transform::from_xyz(0.0, distance * angle.sin(), distance * angle.cos()).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(0.0, distance * angle.sin(), distance * angle.cos() + 2.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
         },
         PickingCameraBundle::default(),

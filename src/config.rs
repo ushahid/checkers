@@ -13,7 +13,8 @@ pub struct BoardConfig {
     pub board_height: f32,
     pub piece_height: f32,
     pub piece_hover_height: f32,
-    pub piece_scale: f32
+    pub piece_scale: f32,
+    pub hover_highlight_strength: f32
 }
 
 impl Default for BoardConfig {
@@ -27,7 +28,8 @@ impl Default for BoardConfig {
             board_height: 0.2,
             piece_height: 0.15,
             piece_hover_height: 0.5,
-            piece_scale: 0.7
+            piece_scale: 0.7,
+            hover_highlight_strength: 0.6
         }
     }
 }

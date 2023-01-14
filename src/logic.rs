@@ -12,7 +12,7 @@ impl Plugin for CheckersGameLogicPlugin {
     fn build(&self, app: &mut App) {
         app
         .add_state(GameState::Input)
-        .add_system_set(SystemSet::on_update(GameState::TryMove).with_system(validate_move))
+        .add_system(handle_try_move)
         .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_move));
     }
 }
@@ -90,7 +90,7 @@ fn is_valid_move(from_row: usize, from_col: usize, to_row: usize, to_col: usize,
 }
 
 
-fn validate_move(
+fn handle_try_move(
     mut trymove_event: EventReader<TryMoveEvent>,
     checkers_state: Res<CheckersState>,
     mut deselect_writer: EventWriter<PieceDeselectEvent>,
@@ -101,7 +101,6 @@ fn validate_move(
         let is_valid: bool = is_valid_move(ev.from_row, ev.from_col, ev.to_row, ev.to_col, &checkers_state);
         if !is_valid{
             deselect_writer.send(PieceDeselectEvent { entity_id: ev.piece_id });
-            game_state.set(GameState::Input).unwrap()
         } else {
             move_writer.send(PieceMoveEvent{
                 from_row: ev.from_row,
@@ -117,7 +116,7 @@ fn validate_move(
 }
 
 
-fn handle_move(mut move_event: EventReader<PieceMoveEvent>, mut checkers_state: ResMut<CheckersState>, mut game_state: ResMut<State<GameState>>, mut kill_writer: EventWriter<KillPiece>, mut upgrade_writer: EventWriter<UpgradePiece>){
+fn handle_move(mut move_event: EventReader<PieceMoveEvent>, mut checkers_state: ResMut<CheckersState>, mut game_state: ResMut<State<GameState>>, mut kill_writer: EventWriter<KillPieceEvent>, mut upgrade_writer: EventWriter<UpgradePieceEvent>){
     for ev in move_event.iter(){
         // update state
         checkers_state.board[ev.to_row][ev.to_col] = checkers_state.board[ev.from_row][ev.from_col];
@@ -133,7 +132,7 @@ fn handle_move(mut move_event: EventReader<PieceMoveEvent>, mut checkers_state: 
             if let Some(piece_in_middle) = checkers_state.board[mid_row][mid_col] {
                 if piece_in_middle.col != checkers_state.turn {
                     checkers_state.board[mid_row][mid_col] = None;
-                    kill_writer.send(KillPiece { row: mid_row, col: mid_col });
+                    kill_writer.send(KillPieceEvent { row: mid_row, col: mid_col });
                     info!("{:?} killed at: ({}, {})", piece_in_middle.typ, mid_row, mid_col);
                 } else {
                     panic!("Killing own piece");
@@ -145,7 +144,7 @@ fn handle_move(mut move_event: EventReader<PieceMoveEvent>, mut checkers_state: 
         let mut moving_piece =  checkers_state.board[ev.to_row][ev.to_col].unwrap();
         if (ev.to_row == 0 && moving_piece.typ == PieceType::Man && moving_piece.col == PieceColor::Black) || (ev.to_row == checkers_state.board.len() - 1 && moving_piece.typ == PieceType::Man && moving_piece.col == PieceColor::Red){
             moving_piece.typ = PieceType::King;
-            upgrade_writer.send(UpgradePiece { piece_id: ev.piece_id });
+            upgrade_writer.send(UpgradePieceEvent { piece_id: ev.piece_id });
             checkers_state.board[ev.to_row][ev.to_col] = Some(moving_piece);
             info!("Made king at: ({}, {})", ev.to_row, ev.to_col);
         }
