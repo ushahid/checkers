@@ -15,11 +15,11 @@ impl Plugin for CheckersInput3dPlugin {
         app.add_plugin(PickingPlugin)
         .add_plugin(InteractablePickingPlugin)
         .add_system_set(SystemSet::on_enter(GameState::Input).with_system(mark_pickable_pieces))
-        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_picking_events))
-        .add_system_set(SystemSet::on_exit(GameState::Input).with_system(unmark_pickable_pieces))
         .add_system_set(SystemSet::on_enter(GameState::RestrictedInput).with_system(mark_pickable_pieces))
+        .add_system_set(SystemSet::on_exit(GameState::Input).with_system(unmark_pickable_pieces))
         .add_system_set(SystemSet::on_exit(GameState::RestrictedInput).with_system(unmark_pickable_pieces))
         .add_system_set(SystemSet::on_update(GameState::RestrictedInput).with_system(handle_picking_events))
+        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_picking_events))
         .add_system(bevy::window::close_on_esc);
     }
 }
@@ -171,7 +171,8 @@ fn unmark_pickable_pieces(
     mut commands: Commands,
     query: Query<Entity, With<PickableMesh>>,
     hover_query: Query<&Hover>,
-    mut remove_highlight_event: EventWriter<RemoveHighlightEntityEvent>
+    mut remove_highlight_event: EventWriter<RemoveHighlightEntityEvent>,
+    mut events: ResMut<Events<PickingEvent>>
 ){
     for entity in query.iter(){
         if let Ok(hover) = hover_query.get(entity){
@@ -181,4 +182,5 @@ fn unmark_pickable_pieces(
         }
         commands.entity(entity).remove::<PickableBundle>();
     }
+    events.clear();
 }
