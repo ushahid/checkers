@@ -4,7 +4,8 @@ use bevy::prelude::*;
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum GameState {
     Input,
-    Move
+    Move,
+    RestrictedInput
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
