@@ -5,7 +5,7 @@ use bevy::prelude::*;
 pub enum GameState {
     Input,
     Move,
-    RestrictedInput
+    RestrictedInput,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -54,6 +54,6 @@ impl CheckersState {
             }
             board.push(board_row);
         }
-        return CheckersState { turn: PieceColor::Black, board:  board};
+        return CheckersState { turn: PieceColor::Black, board };
     }
 }

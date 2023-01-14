@@ -15,15 +15,18 @@ impl Plugin for CheckersRendering3dPlugin {
         app
         .insert_resource(ClearColor(Color::BLACK))
         .add_startup_system(setup_board)
-        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_piece_selection))
-        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_piece_deselection))
-        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_add_highlight))
-        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_remove_highlight))
+        .add_system(handle_piece_selection)
+        .add_system(handle_piece_deselection)
+        .add_system(handle_add_highlight)
+        .add_system(handle_remove_highlight)
         .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_move))
         .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_kill))
         .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_upgrade));
     }
 }
+
+#[derive(Component)]
+pub struct Dim;
 
 
 #[derive(Component, Debug)]
@@ -54,6 +57,7 @@ fn dim_material(material_handle: &Handle<StandardMaterial>, materials: &mut ResM
 
 
 fn handle_add_highlight(
+    mut commands: Commands,
     mut highlight_event: EventReader<HighlightEntityEvent>,
     board_config: Res<BoardConfig>, query: Query<&Handle<StandardMaterial>>,
     mut materials: ResMut<Assets<StandardMaterial>>
@@ -61,6 +65,7 @@ fn handle_add_highlight(
     for ev in highlight_event.iter(){
         if let Ok(material_handle) = query.get(ev.entity_id) {
             dim_material(material_handle, &mut materials, board_config.hover_highlight_strength);
+            commands.entity(ev.entity_id).insert(Dim);
         } else {
             panic!("Invalid entity handle");
         }
@@ -69,15 +74,20 @@ fn handle_add_highlight(
 
 
 fn handle_remove_highlight(
+    mut commands: Commands,
     mut remove_highlight_event: EventReader<RemoveHighlightEntityEvent>,
     board_config: Res<BoardConfig>, query: Query<&Handle<StandardMaterial>>,
+    dim_query: Query<&Dim>,
     mut materials: ResMut<Assets<StandardMaterial>>
 ){
     for ev in remove_highlight_event.iter(){
-        if let Ok(material_handle) = query.get(ev.entity_id) {
-            dim_material(material_handle, &mut materials, 1.0 / board_config.hover_highlight_strength);
-        } else {
-            panic!("Invalid entity handle");
+        if let Ok(_) = dim_query.get(ev.entity_id){
+            if let Ok(material_handle) = query.get(ev.entity_id) {
+                dim_material(material_handle, &mut materials, 1.0 / board_config.hover_highlight_strength);
+                commands.entity(ev.entity_id).remove::<Dim>();
+            } else {
+                panic!("Invalid entity handle");
+            }
         }
     }
 }
