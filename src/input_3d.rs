@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_mod_picking::{PickingEvent, PickingPlugin, InteractablePickingPlugin, HoverEvent, PickableMesh, PickableBundle, SelectionEvent};
+use bevy_mod_picking::{PickingEvent, PickingPlugin, InteractablePickingPlugin, HoverEvent, PickableMesh, PickableBundle, SelectionEvent, Hover};
 use crate::{
     rendering_3d::{BoardSquareComponent, PieceComponent}, state::{GameState, CheckersState},
     checkers_events::*,
@@ -7,7 +7,6 @@ use crate::{
 
 
 pub struct CheckersInput3dPlugin;
-
 
 
 impl Plugin for CheckersInput3dPlugin {
@@ -21,12 +20,12 @@ impl Plugin for CheckersInput3dPlugin {
     }
 }
 
+
 #[derive(Resource)]
 pub struct MoveFrom {
     from_row: usize,
     from_col: usize
 }
-
 
 
 fn handle_picking_events(
@@ -99,7 +98,7 @@ fn handle_picking_events(
         select_writer.send(PieceSelectEvent{entity_id: selected_entity.unwrap()});
     }
 
-    if piece_deselected && piece_selected{
+    if piece_deselected && !sq_selected{
         deselect_writer.send(PieceDeselectEvent{entity_id: deselected_entity.unwrap()});
     }
     
@@ -115,7 +114,6 @@ fn handle_picking_events(
             sq_id: selected_entity.unwrap()
         });
         commands.remove_resource::<MoveFrom>();
-        remove_highlight_writer.send(RemoveHighlightEntityEvent{entity_id: selected_entity.unwrap()})
     }
 }
 
@@ -143,8 +141,16 @@ fn mark_pickable_pieces(mut commands: Commands, query: Query<(Entity, &PieceComp
 
 
 // Function to unmark pickable pieces
-fn unmark_pickable_pieces(mut commands: Commands, query: Query<Entity, With<PickableMesh>>){
+fn unmark_pickable_pieces(
+    mut commands: Commands,
+    query: Query<Entity, With<PickableMesh>>,
+    hover_query: Query<Entity, With<Hover>>, 
+    mut remove_highlight_event: EventWriter<RemoveHighlightEntityEvent>
+){
     for entity in query.iter(){
+        if let Ok(entity_id) = hover_query.get(entity){
+            remove_highlight_event.send(RemoveHighlightEntityEvent { entity_id });
+        }
         commands.entity(entity).remove::<PickableBundle>();
     }
 }
