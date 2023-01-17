@@ -19,9 +19,9 @@ impl Plugin for CheckersRendering3dPlugin {
         .add_system(handle_piece_deselection)
         .add_system(handle_add_highlight)
         .add_system(handle_remove_highlight)
-        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_move))
-        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_kill))
-        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_upgrade));
+        .add_system(handle_move)
+        .add_system(handle_kill)
+        .add_system(handle_upgrade);
     }
 }
 

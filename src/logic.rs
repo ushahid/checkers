@@ -255,7 +255,7 @@ fn handle_move(
         // switch turn
         if is_kill && !upgraded{
             let possible_kill_moves: Vec<Move> = possible_kill_moves_piece(ev.to.row, ev.to.col, &checkers_state);
-            if possible_kill_moves.len() > 0{
+            if possible_kill_moves.len() > 0 {
                 commands.insert_resource(PossibleMoves{moves: possible_kill_moves});
                 game_state.set(GameState::RestrictedInput).unwrap();
                 multi_kill = true;

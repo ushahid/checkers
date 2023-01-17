@@ -71,7 +71,6 @@ fn handle_picking_events(
                                 let to = input_move.to.unwrap();
                                 input_move.from = None;
                                 input_move.to = None;
-                                info!("Move from {:?} to {:?}", from, to);
                                 trymove_writer.send(TryMoveEvent{
                                     from,
                                     to
@@ -112,7 +111,9 @@ fn mark_pickable_pieces(
     checkers_state: Res<CheckersState>,
     sq_query: Query<(Entity, &BoardSquareComponent)>,
     game_state: Res<State<GameState>>,
-    possible_moves: Option<Res<PossibleMoves>>
+    possible_moves: Option<Res<PossibleMoves>>,
+    mut input_move: ResMut<InputMove>,
+    mut selection_event: EventWriter<PieceSelectEvent>
 ){
     if *game_state.current() == GameState::RestrictedInput{
         if let Some(m) = possible_moves {
@@ -122,6 +123,8 @@ fn mark_pickable_pieces(
             for (entity, piece) in query.iter(){
                 if piece.pos == source_pos{
                     commands.entity(entity).insert(PickableBundle::default());
+                    selection_event.send(PieceSelectEvent { pos: source_pos });
+                    input_move.from = Some(source_pos);
                     info!("Marked piece {:?} as pickable", source_pos);
                 }
             }
