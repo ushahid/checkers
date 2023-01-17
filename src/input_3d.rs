@@ -112,8 +112,7 @@ fn mark_pickable_pieces(
     sq_query: Query<(Entity, &BoardSquareComponent)>,
     game_state: Res<State<GameState>>,
     possible_moves: Option<Res<PossibleMoves>>,
-    mut input_move: ResMut<InputMove>,
-    mut selection_event: EventWriter<PieceSelectEvent>
+    mut selection_event: EventWriter<PickingEvent>,
 ){
     if *game_state.current() == GameState::RestrictedInput{
         if let Some(m) = possible_moves {
@@ -123,8 +122,7 @@ fn mark_pickable_pieces(
             for (entity, piece) in query.iter(){
                 if piece.pos == source_pos{
                     commands.entity(entity).insert(PickableBundle::default());
-                    selection_event.send(PieceSelectEvent { pos: source_pos });
-                    input_move.from = Some(source_pos);
+                    selection_event.send(PickingEvent::Selection(SelectionEvent::JustSelected(entity)));
                     info!("Marked piece {:?} as pickable", source_pos);
                 }
             }

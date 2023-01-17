@@ -29,6 +29,12 @@ impl Plugin for CheckersRendering3dPlugin {
 pub struct Dim;
 
 
+
+#[derive(Component)]
+pub struct Hovering;
+
+
+
 #[derive(Component, Debug)]
 pub struct PieceComponent{
     pub pos: Position,
@@ -172,24 +178,26 @@ fn compute_piece_center(row: usize, col: usize, board_config: &BoardConfig) -> V
 }
 
 
-fn handle_piece_selection(mut query: Query<(&mut Transform, &PieceComponent)>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceSelectEvent>){
+fn handle_piece_selection(mut commands: Commands, mut query: Query<(Entity, &mut Transform, &PieceComponent)>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceSelectEvent>, hover_query: Query<&Hovering>){
     for event in ev.iter(){
-        for (mut transform, piece_component) in query.iter_mut(){
-            if piece_component.pos == event.pos {
+        for (entity, mut transform, piece_component) in query.iter_mut(){
+            if piece_component.pos == event.pos && !hover_query.get(entity).is_ok(){
                 transform.translation.y += board_config.piece_hover_height;
+                commands.entity(entity).insert(Hovering);
             }
         }
     }
 }
 
 
-fn handle_piece_deselection(mut query: Query<(&mut Transform, &mut PieceComponent)>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceDeselectEvent>){
+fn handle_piece_deselection(mut commands: Commands, mut query: Query<(Entity, &mut Transform, &mut PieceComponent)>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceDeselectEvent>, hover_query: Query<&Hovering>){
     for event in ev.iter(){
-        for (mut transform, piece_component) in query.iter_mut(){
-            if piece_component.pos == event.pos {
+        for (entity, mut transform, piece_component) in query.iter_mut(){
+            if piece_component.pos == event.pos && hover_query.get(entity).is_ok(){
                 transform.translation.y += board_config.piece_hover_height;
                 let position = compute_piece_center(piece_component.pos.row, piece_component.pos.col, &board_config);
                 transform.translation.y = position.y;
+                commands.entity(entity).remove::<Hovering>();
             }
         }
     }
