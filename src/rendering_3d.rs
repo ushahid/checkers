@@ -148,7 +148,6 @@ fn handle_kill(mut commands: Commands, mut kill_event: EventReader<KillPieceEven
 
 fn handle_move(mut query: Query<(&mut Transform, &mut PieceComponent)>, mut move_event: EventReader<PieceMoveEvent>,  board_config: Res<BoardConfig>){
     for event in move_event.iter(){
-        println!("Move from {:?} {:?}", event.from, event.to);
         for (mut transform, mut piece_component) in query.iter_mut(){
             if piece_component.pos == event.from {
                 let center = compute_piece_center(event.to.row, event.to.col, &board_config);

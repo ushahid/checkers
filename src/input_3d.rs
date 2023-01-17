@@ -124,8 +124,10 @@ fn mark_pickable_pieces(
 
             // Mark only the relevant piece pickable
             for (entity, piece) in query.iter(){
+                let mut bundle = PickableBundle::default();
+                bundle.selection.set_selected(true);
                 if piece.pos == source_pos{
-                    commands.entity(entity).insert(PickableBundle::default());
+                    commands.entity(entity).insert(bundle);
                     input_move.from = Some(source_pos);
                     select_writer.send(PieceSelectEvent { pos: source_pos });
                     info!("Marked piece {:?} as pickable", source_pos);
