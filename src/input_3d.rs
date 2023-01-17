@@ -3,7 +3,7 @@ use bevy_mod_picking::{PickingEvent, PickingPlugin, InteractablePickingPlugin, H
 use crate::{
     rendering_3d::{BoardSquareComponent, PieceComponent}, state::{GameState, CheckersState},
     checkers_events::*,
-    logic::{MoveFromRes, MoveFrom, PossibleMoves, Move}
+    logic::{InputMove, PossibleMoves, Move}
 };
 
 
@@ -15,11 +15,11 @@ impl Plugin for CheckersInput3dPlugin {
         app.add_plugin(PickingPlugin)
         .add_plugin(InteractablePickingPlugin)
         .add_system_set(SystemSet::on_enter(GameState::Input).with_system(mark_pickable_pieces))
-        .add_system_set(SystemSet::on_enter(GameState::RestrictedInput).with_system(mark_pickable_pieces))
-        .add_system_set(SystemSet::on_exit(GameState::Input).with_system(unmark_pickable_pieces))
-        .add_system_set(SystemSet::on_exit(GameState::RestrictedInput).with_system(unmark_pickable_pieces))
-        .add_system_set(SystemSet::on_update(GameState::RestrictedInput).with_system(handle_picking_events))
         .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_picking_events))
+        .add_system_set(SystemSet::on_exit(GameState::Input).with_system(unmark_pickable_pieces))
+        .add_system_set(SystemSet::on_enter(GameState::RestrictedInput).with_system(mark_pickable_pieces))
+        .add_system_set(SystemSet::on_update(GameState::RestrictedInput).with_system(handle_picking_events))
+        .add_system_set(SystemSet::on_exit(GameState::RestrictedInput).with_system(unmark_pickable_pieces))
         .add_system(bevy::window::close_on_esc);
     }
 }
@@ -34,15 +34,12 @@ fn handle_picking_events(
         mut highlight_writer: EventWriter<HighlightEntityEvent>,
         mut remove_highlight_writer: EventWriter<RemoveHighlightEntityEvent>,
         mut trymove_writer: EventWriter<TryMoveEvent>,
-        mut move_from: ResMut<MoveFromRes>,
+        mut input_move: ResMut<InputMove>,
     ){
 
-    let mut piece_selected: bool = false;
-    let mut sq_selected: bool = false;
-    let mut piece_deselected: bool = false;
-
-    let mut selected_entity:Option<Entity> = None;
-    let mut deselected_entity:Option<Entity> = None;
+    
+    let mut board_sq_selected = false;
+    let mut piece_deselected = false;
 
     
     for event in events.iter() {
@@ -62,23 +59,34 @@ fn handle_picking_events(
                 match selection_event {
                     SelectionEvent::JustSelected(entity) => {
                         if let Ok(piece_comp) = pc_query.get(*entity){
-                            piece_selected = true;
-                            selected_entity = Some(*entity);
-                            move_from.m = Some(MoveFrom{row: piece_comp.row, col: piece_comp.col});
+                            input_move.from = Some(piece_comp.pos);
+                            input_move.to = None;
+                            select_writer.send(PieceSelectEvent{pos: piece_comp.pos});
 
-                        } else if bsc_query.get(*entity).is_ok(){
-                            sq_selected = true;
-                            selected_entity = Some(*entity);
+                        } else if let Ok(board_sq_comp) =  bsc_query.get(*entity){
+                            board_sq_selected = true;
+                            input_move.to = Some(board_sq_comp.pos);
+                            if input_move.from.is_some(){
+                                let from = input_move.from.unwrap();
+                                let to = input_move.to.unwrap();
+                                input_move.from = None;
+                                input_move.to = None;
+                                info!("Move from {:?} to {:?}", from, to);
+                                trymove_writer.send(TryMoveEvent{
+                                    from,
+                                    to
+                                });
+                            }
                         } else {
                             panic!("Selected an entity that should not exist");
                         }
                     },
                     SelectionEvent::JustDeselected(entity) => {
-                        if pc_query.get(*entity).is_ok(){
+                        if let Ok(piece_comp) = pc_query.get(*entity){
+                            deselect_writer.send(PieceDeselectEvent{pos: piece_comp.pos});
                             piece_deselected = true;
-                            deselected_entity = Some(*entity);
                         } else if bsc_query.get(*entity).is_ok(){
-                            deselected_entity = Some(*entity);
+                            ()
                         } else {
                             panic!("Deselected an entity that should not exist");
                         }
@@ -91,27 +99,8 @@ fn handle_picking_events(
         }
     }
 
-    if piece_selected {
-        select_writer.send(PieceSelectEvent{entity_id: selected_entity.unwrap()});
-    }
-
-
-    if piece_deselected && !sq_selected{
-        deselect_writer.send(PieceDeselectEvent{entity_id: deselected_entity.unwrap()});
-    }
-    
-    if sq_selected &&  move_from.m.is_some(){
-        let m = move_from.as_mut().m.unwrap();
-        let board_sq = bsc_query.get(selected_entity.unwrap()).unwrap();
-        move_from.m = None;
-        trymove_writer.send(TryMoveEvent{
-            from_row: m.row,
-            from_col: m.col,
-            to_row: board_sq.row,
-            to_col: board_sq.col,
-            piece_id: deselected_entity.unwrap(),
-            sq_id: selected_entity.unwrap()
-        });
+    if piece_deselected && !board_sq_selected {
+        input_move.from = None;
     }
 }
 
@@ -127,21 +116,20 @@ fn mark_pickable_pieces(
 ){
     if *game_state.current() == GameState::RestrictedInput{
         if let Some(m) = possible_moves {
-            let source_row: usize = m.moves[0].from_row;
-            let source_col: usize = m.moves[0].from_col;
+            let source_pos = m.moves[0].from;
 
             // Mark only the relevant piece pickable
             for (entity, piece) in query.iter(){
-                if piece.row == source_row && piece.col == source_col{
+                if piece.pos == source_pos{
                     commands.entity(entity).insert(PickableBundle::default());
-                    info!("Marked piece ({}, {}) as pickable", piece.row, piece.col);
+                    info!("Marked piece {:?} as pickable", source_pos);
                 }
             }
             // Mark only the relevant squares pickable
             for (entity, square) in sq_query.iter() {
-                if m.moves.contains(&Move{ from_row: source_row, from_col: source_col, to_row: square.row, to_col: square.col}){
+                if m.moves.contains(&Move{ from: source_pos, to: square.pos}){
                     commands.entity(entity).insert(PickableBundle::default());
-                    info!("Marked square ({}, {}) as pickable", square.row, square.col);
+                    info!("Marked square {:?} as pickable", square.pos);
                 }
             }
         }
@@ -155,7 +143,7 @@ fn mark_pickable_pieces(
 
         // Mark relevant board squares pickable
         for (entity, square) in sq_query.iter() {
-            match checkers_state.board[square.row][square.col]{
+            match checkers_state.board[square.pos.row][square.pos.col]{
                 None => {
                     commands.entity(entity).insert(PickableBundle::default());
                 }

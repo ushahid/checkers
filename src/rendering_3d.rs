@@ -2,7 +2,7 @@ use bevy::{prelude::*};
 use crate::{
     config::BoardConfig,
     state::*,
-    checkers_events::{PieceSelectEvent, PieceDeselectEvent, PieceMoveEvent, KillPieceEvent, UpgradePieceEvent, HighlightEntityEvent, RemoveHighlightEntityEvent}
+    checkers_events::{PieceSelectEvent, PieceDeselectEvent, PieceMoveEvent, KillPieceEvent, UpgradePieceEvent, HighlightEntityEvent, RemoveHighlightEntityEvent}, logic::Position
 };
 
 
@@ -31,8 +31,7 @@ pub struct Dim;
 
 #[derive(Component, Debug)]
 pub struct PieceComponent{
-    pub row: usize,
-    pub col: usize,
+    pub pos: Position,
     pub color: PieceColor,
     pub typ: PieceType
 }
@@ -44,8 +43,7 @@ pub struct BoardComponent;
 
 #[derive(Component, Debug)]
 pub struct BoardSquareComponent {
-    pub row: usize,
-    pub col: usize
+    pub pos: Position,
 }
 
 
@@ -97,7 +95,7 @@ fn handle_remove_highlight(
 fn handle_upgrade(
     mut commands: Commands,
     mut upgrade_event: EventReader<UpgradePieceEvent>,
-    mut query: Query<&mut PieceComponent>,
+    mut query: Query<(Entity, &mut PieceComponent)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     board_config: Res<BoardConfig>
@@ -107,27 +105,29 @@ fn handle_upgrade(
     for event in upgrade_event.iter(){
         let sq_dim: f32 = (board_config.world_dim - (board_config.border_size * 2.0)) / board_config.board_dim as f32;
         let scaled_sq_dim: f32 = board_config.piece_scale * sq_dim;
-        if let Ok(mut piece_component) = query.get_mut(event.piece_id){
-            piece_component.typ = PieceType::King;
-            let color = match piece_component.color {
-                PieceColor::Black => Color::rgb(0.25, 0.25, 0.25),
-                PieceColor::Red => Color::RED,
-            };
-            let child = commands.spawn(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Box{
-                                                            min_x: - scaled_sq_dim / 2.0,
-                                                            max_x: scaled_sq_dim / 2.0,
-                                                            min_y: - board_config.piece_height / 2.0,
-                                                            max_y: (board_config.piece_height / 2.0) * 1.75,
-                                                            min_z: - scaled_sq_dim / 2.0,
-                                                            max_z: scaled_sq_dim / 2.0
-                                                    })),
-                material: materials.add(color.into()),
-                transform: Transform::from_scale(Vec3{x: 0.8, y: 1.0, z: 0.8}),
-                ..default()
-            }).id();
-            commands.entity(event.piece_id).push_children(&[child]);
 
+        for (entity, mut piece_component) in query.iter_mut(){
+            if piece_component.pos == event.pos {
+                piece_component.typ = PieceType::King;
+                let color = match piece_component.color {
+                    PieceColor::Black => Color::rgb(0.25, 0.25, 0.25),
+                    PieceColor::Red => Color::RED,
+                };
+                let child = commands.spawn(PbrBundle {
+                    mesh: meshes.add(Mesh::from(shape::Box{
+                                                                min_x: - scaled_sq_dim / 2.0,
+                                                                max_x: scaled_sq_dim / 2.0,
+                                                                min_y: - board_config.piece_height / 2.0,
+                                                                max_y: (board_config.piece_height / 2.0) * 1.75,
+                                                                min_z: - scaled_sq_dim / 2.0,
+                                                                max_z: scaled_sq_dim / 2.0
+                                                        })),
+                    material: materials.add(color.into()),
+                    transform: Transform::from_scale(Vec3{x: 0.8, y: 1.0, z: 0.8}),
+                    ..default()
+                }).id();
+                commands.entity(entity).push_children(&[child]);
+            }
         }
     }
 }
@@ -136,7 +136,7 @@ fn handle_upgrade(
 fn handle_kill(mut commands: Commands, mut kill_event: EventReader<KillPieceEvent>, query: Query<(Entity, &PieceComponent)>){
     for event in kill_event.iter(){
         for (entity, piece_component) in query.iter(){
-            if piece_component.row == event.row && piece_component.col == event.col {
+            if piece_component.pos == event.pos {
                 commands.entity(entity).despawn_recursive();
             }
         }
@@ -147,13 +147,14 @@ fn handle_kill(mut commands: Commands, mut kill_event: EventReader<KillPieceEven
 
 fn handle_move(mut query: Query<(&mut Transform, &mut PieceComponent)>, mut move_event: EventReader<PieceMoveEvent>,  board_config: Res<BoardConfig>){
     for event in move_event.iter(){
-        if let Ok((mut transform, mut piece_comp)) = query.get_mut(event.piece_id){
-            let center = compute_piece_center(event.to_row, event.to_col, &board_config);
-            transform.translation.x = center.x;
-            transform.translation.y = center.y;
-            transform.translation.z = center.z;
-            piece_comp.row = event.to_row;
-            piece_comp.col = event.to_col;
+        for (mut transform, mut piece_component) in query.iter_mut(){
+            if piece_component.pos == event.from {
+                let center = compute_piece_center(event.to.row, event.to.col, &board_config);
+                transform.translation.x = center.x;
+                transform.translation.y = center.y;
+                transform.translation.z = center.z;
+                piece_component.pos = event.to;
+            }
         }
     }
 }
@@ -171,10 +172,12 @@ fn compute_piece_center(row: usize, col: usize, board_config: &BoardConfig) -> V
 }
 
 
-fn handle_piece_selection(mut query: Query<&mut Transform, With<PieceComponent>>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceSelectEvent>){
+fn handle_piece_selection(mut query: Query<(&mut Transform, &PieceComponent)>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceSelectEvent>){
     for event in ev.iter(){
-        if let Ok(mut transform) = query.get_mut(event.entity_id){
-            transform.translation.y += board_config.piece_hover_height;
+        for (mut transform, piece_component) in query.iter_mut(){
+            if piece_component.pos == event.pos {
+                transform.translation.y += board_config.piece_hover_height;
+            }
         }
     }
 }
@@ -182,9 +185,12 @@ fn handle_piece_selection(mut query: Query<&mut Transform, With<PieceComponent>>
 
 fn handle_piece_deselection(mut query: Query<(&mut Transform, &mut PieceComponent)>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceDeselectEvent>){
     for event in ev.iter(){
-        if let Ok((mut transform, piece)) = query.get_mut(event.entity_id){
-            let position = compute_piece_center(piece.row, piece.col, &board_config);
-            transform.translation.y = position.y;
+        for (mut transform, piece_component) in query.iter_mut(){
+            if piece_component.pos == event.pos {
+                transform.translation.y += board_config.piece_hover_height;
+                let position = compute_piece_center(piece_component.pos.row, piece_component.pos.col, &board_config);
+                transform.translation.y = position.y;
+            }
         }
     }
 }
@@ -226,7 +232,7 @@ fn add_pieces(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materi
                         material: materials.add(color.into()),
                         transform: Transform::from_xyz(position.x, position.y, position.z),
                         ..default()
-                    }).insert(PieceComponent{row: row, col: col, color: piece.col, typ: piece.typ}).id();
+                    }).insert(PieceComponent{pos: Position{row, col}, color: piece.col, typ: piece.typ}).id();
                     if piece.typ == PieceType::King {
                         let child = commands.spawn(PbrBundle {
                             mesh: meshes.add(Mesh::from(shape::Box{
@@ -332,7 +338,7 @@ fn add_board(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materia
                                     })),
                     material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
                     ..default()
-                }).insert(BoardSquareComponent{row: z, col: x}).id();
+                }).insert(BoardSquareComponent{pos: Position{row: z, col: x}}).id();
                 commands.entity(board).push_children(&[child]);
             }
         }

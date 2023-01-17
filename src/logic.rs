@@ -11,25 +11,20 @@ pub struct CheckersGameLogicPlugin;
 impl Plugin for CheckersGameLogicPlugin {
     fn build(&self, app: &mut App) {
         app
-        .insert_resource(MoveFromRes{m: None})
+        .insert_resource(InputMove{from: None, to: None})
         .add_state(GameState::Input)
-        .add_system(handle_try_move)
+        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_try_move))
+        .add_system_set(SystemSet::on_update(GameState::RestrictedInput).with_system(handle_try_move))
         .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_move))
         .add_system_set(SystemSet::on_exit(GameState::RestrictedInput).with_system(remove_resources));
     }
 }
 
 
-
-#[derive(Resource, Clone, Copy)]
-pub struct MoveFrom {
-    pub row: usize,
-    pub col: usize
-}
-
-#[derive(Resource, Clone, Copy)]
-pub struct MoveFromRes {
-    pub m: Option<MoveFrom>
+#[derive(Resource)]
+pub struct InputMove {
+    pub from: Option<Position>,
+    pub to: Option<Position>
 }
 
 #[derive(Resource)]
@@ -37,12 +32,17 @@ pub struct PossibleMoves {
     pub moves: Vec<Move>
 }
 
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub struct Position {
+    pub row: usize,
+    pub col: usize
+}
+
+
 #[derive(PartialEq)]
 pub struct Move {
-    pub from_row: usize,
-    pub from_col: usize,
-    pub to_row: usize,
-    pub to_col: usize
+    pub from: Position,
+    pub to: Position
 }
 
 
@@ -82,7 +82,7 @@ fn possible_kill_moves_piece(row: usize, col: usize, checkers_state: &CheckersSt
                 if let Some(target_piece) = checkers_state.board[target_row as usize][target_col as usize] {
                     if target_piece.col != checkers_state.turn && checkers_state.board[jump_row as usize][jump_col as usize].is_none(){
                         // info!("Valid kill");
-                        possible_kills.push(Move{from_row: row, from_col: col, to_row: jump_row as usize, to_col: jump_col as usize});
+                        possible_kills.push(Move{from: Position{row, col}, to: Position{row: jump_row as usize, col: jump_col as usize}});
                     }
                 }
             }
@@ -168,10 +168,11 @@ fn is_valid_move(from_row: usize, from_col: usize, to_row: usize, to_col: usize,
         // check for kill sources
         let possible_kills = check_kill_moves(checkers_state);
         if possible_kills.len() > 0{
-            if !possible_kills.contains(&Move{from_row, from_col, to_row, to_col}){
+            if !possible_kills.contains(&Move{from: Position { row: from_row, col: from_col }, to: Position { row: to_row, col: to_col }}){
+                // TODO: Add logs
                 info!{
                     "Invalid move! Kill is mandatory, can only move {}",
-                    possible_kills.iter().map(|m|-> String { format!("({}, {}) to ({}, {})", m.from_row, m.from_col, m.to_row, m.to_col) }).collect::<Vec<String>>().join(", ")
+                    possible_kills.iter().map(|m|-> String { format!("{:?} to {:?}", m.from, m.to) }).collect::<Vec<String>>().join(", ")
                 };
                 return false;
             }
@@ -190,18 +191,14 @@ fn handle_try_move(
     mut game_state: ResMut<State<GameState>>
 ){
     for ev in trymove_event.iter(){
-        let is_valid: bool = is_valid_move(ev.from_row, ev.from_col, ev.to_row, ev.to_col, &checkers_state);
+        let is_valid: bool = is_valid_move(ev.from.row, ev.from.col, ev.to.row, ev.to.col, &checkers_state);
         if !is_valid{
-            deselect_writer.send(PieceDeselectEvent { entity_id: ev.piece_id });
+            deselect_writer.send(PieceDeselectEvent { pos: ev.from });
         } else {
             game_state.set(GameState::Move).unwrap();
             move_writer.send(PieceMoveEvent{
-                from_row: ev.from_row,
-                from_col: ev.from_col,
-                to_row: ev.to_row,
-                to_col: ev.to_col,
-                piece_id: ev.piece_id,
-                sq_id: ev.sq_id
+                from: ev.from,
+                to: ev.to
             });
         }
     }
@@ -218,22 +215,24 @@ fn handle_move(
 ){
     for ev in move_event.iter(){
         let mut is_kill: bool = false;
+        let mut multi_kill: bool = false;
+        let mut upgraded: bool = false;
 
         // update state
-        checkers_state.board[ev.to_row][ev.to_col] = checkers_state.board[ev.from_row][ev.from_col];
-        checkers_state.board[ev.from_row][ev.from_col] = None;
+        checkers_state.board[ev.to.row][ev.to.col] = checkers_state.board[ev.from.row][ev.from.col];
+        checkers_state.board[ev.from.row][ev.from.col] = None;
         
         //  handle kills
-        if ev.from_row.abs_diff(ev.to_row) == 2 {
-            let row_delta: i32 = ((ev.from_row as i32) - (ev.to_row as i32)).signum();
-            let col_delta: i32 = ((ev.from_col as i32) - (ev.to_col as i32)).signum();
-            let mid_row: usize = (ev.from_row as i32 - row_delta) as usize;
-            let mid_col: usize = (ev.from_col as i32 - col_delta) as usize;
+        if ev.from.row.abs_diff(ev.to.row) == 2 {
+            let row_delta: i32 = ((ev.from.row as i32) - (ev.to.row as i32)).signum();
+            let col_delta: i32 = ((ev.from.col as i32) - (ev.to.col as i32)).signum();
+            let mid_row: usize = (ev.from.row as i32 - row_delta) as usize;
+            let mid_col: usize = (ev.from.col as i32 - col_delta) as usize;
 
             if let Some(piece_in_middle) = checkers_state.board[mid_row][mid_col] {
                 if piece_in_middle.col != checkers_state.turn {
                     checkers_state.board[mid_row][mid_col] = None;
-                    kill_writer.send(KillPieceEvent { row: mid_row, col: mid_col });
+                    kill_writer.send(KillPieceEvent { pos: Position { row: mid_row, col: mid_col } });
                     is_kill = true;
                     info!("{:?} killed at: ({}, {})", piece_in_middle.typ, mid_row, mid_col);
                 } else {
@@ -243,35 +242,32 @@ fn handle_move(
         }
 
         // handle upgrades, piece has already been moved
-        let mut moving_piece =  checkers_state.board[ev.to_row][ev.to_col].unwrap();
-        if (ev.to_row == 0 && moving_piece.typ == PieceType::Man && moving_piece.col == PieceColor::Black) || (ev.to_row == checkers_state.board.len() - 1 && moving_piece.typ == PieceType::Man && moving_piece.col == PieceColor::Red){
+        let mut moving_piece =  checkers_state.board[ev.to.row][ev.to.col].unwrap();
+        if (ev.to.row == 0 && moving_piece.typ == PieceType::Man && moving_piece.col == PieceColor::Black) || (ev.to.row == checkers_state.board.len() - 1 && moving_piece.typ == PieceType::Man && moving_piece.col == PieceColor::Red){
             moving_piece.typ = PieceType::King;
-            upgrade_writer.send(UpgradePieceEvent { piece_id: ev.piece_id });
-            checkers_state.board[ev.to_row][ev.to_col] = Some(moving_piece);
-            info!("Made king at: ({}, {})", ev.to_row, ev.to_col);
+            upgrade_writer.send(UpgradePieceEvent { pos: ev.to });
+            checkers_state.board[ev.to.row][ev.to.col] = Some(moving_piece);
+            info!("Made king at: ({}, {})", ev.to.row, ev.to.col);
+            upgraded = true;
         }
 
         
-        let mut double_kill: bool = false;
-
         // switch turn
-        if is_kill{
-            let possible_kill_moves: Vec<Move> = possible_kill_moves_piece(ev.to_row, ev.to_col, &checkers_state);
+        if is_kill && !upgraded{
+            let possible_kill_moves: Vec<Move> = possible_kill_moves_piece(ev.to.row, ev.to.col, &checkers_state);
             if possible_kill_moves.len() > 0{
-                info!("Input restricted!");
                 commands.insert_resource(PossibleMoves{moves: possible_kill_moves});
                 game_state.set(GameState::RestrictedInput).unwrap();
-                double_kill = true;
+                multi_kill = true;
             }
         }
 
-        if !double_kill {
+        if !multi_kill {
             checkers_state.turn = match checkers_state.turn {
                 PieceColor::Red => PieceColor::Black,
                 PieceColor::Black => PieceColor::Red
             };
             game_state.set(GameState::Input).unwrap();
-
         }
         info!("{:?}'s turn", checkers_state.turn);
     }

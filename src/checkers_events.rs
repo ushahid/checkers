@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-
+use crate::logic::Position;
 
 pub struct CheckersEventsPlugin;
 
@@ -28,38 +28,29 @@ pub struct RemoveHighlightEntityEvent {
 
 
 pub struct TryMoveEvent{
-    pub from_row: usize,
-    pub from_col: usize,
-    pub to_row: usize,
-    pub to_col: usize,
-    pub piece_id: Entity,
-    pub sq_id: Entity
+    pub from: Position,
+    pub to: Position
 }
 
 pub struct PieceMoveEvent{
-    pub from_row: usize,
-    pub from_col: usize,
-    pub to_row: usize,
-    pub to_col: usize,
-    pub piece_id: Entity,
-    pub sq_id: Entity
+    pub from: Position,
+    pub to: Position
 }
 
 pub struct KillPieceEvent {
-    pub row: usize,
-    pub col: usize
+    pub pos: Position
 }
 
 pub struct PieceSelectEvent{
-    pub entity_id: Entity
+    pub pos: Position
 }
 
 
 pub struct PieceDeselectEvent{
-    pub entity_id: Entity
+    pub pos: Position
 }
 
 
 pub struct UpgradePieceEvent {
-    pub piece_id: Entity
+    pub pos: Position
 }
