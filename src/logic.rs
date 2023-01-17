@@ -13,8 +13,7 @@ impl Plugin for CheckersGameLogicPlugin {
         app
         .insert_resource(InputMove{from: None, to: None})
         .add_state(GameState::Input)
-        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_try_move))
-        .add_system_set(SystemSet::on_update(GameState::RestrictedInput).with_system(handle_try_move))
+        .add_system_set(SystemSet::on_update(GameState::TryMove).with_system(handle_try_move))
         .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_move))
         .add_system_set(SystemSet::on_exit(GameState::RestrictedInput).with_system(remove_resources));
     }
@@ -186,20 +185,26 @@ fn is_valid_move(from_row: usize, from_col: usize, to_row: usize, to_col: usize,
 fn handle_try_move(
     mut trymove_event: EventReader<TryMoveEvent>,
     checkers_state: Res<CheckersState>,
-    mut deselect_writer: EventWriter<PieceDeselectEvent>,
     mut move_writer: EventWriter<PieceMoveEvent>,
-    mut game_state: ResMut<State<GameState>>
+    mut game_state: ResMut<State<GameState>>,
+    possible_moves: Option<Res<PossibleMoves>>
 ){
     for ev in trymove_event.iter(){
         let is_valid: bool = is_valid_move(ev.from.row, ev.from.col, ev.to.row, ev.to.col, &checkers_state);
         if !is_valid{
-            deselect_writer.send(PieceDeselectEvent { pos: ev.from });
+            // deselect_writer.send(PieceDeselectEvent { pos: ev.from });
+            if possible_moves.is_some(){
+                game_state.set(GameState::RestrictedInput).unwrap();
+            } else {
+                game_state.set(GameState::Input).unwrap();
+            }
+            
         } else {
-            game_state.set(GameState::Move).unwrap();
             move_writer.send(PieceMoveEvent{
                 from: ev.from,
                 to: ev.to
             });
+            game_state.set(GameState::Move).unwrap();
         }
     }
 }

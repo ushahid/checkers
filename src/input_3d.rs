@@ -15,11 +15,10 @@ impl Plugin for CheckersInput3dPlugin {
         app.add_plugin(PickingPlugin)
         .add_plugin(InteractablePickingPlugin)
         .add_system_set(SystemSet::on_enter(GameState::Input).with_system(mark_pickable_pieces))
-        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_picking_events))
         .add_system_set(SystemSet::on_exit(GameState::Input).with_system(unmark_pickable_pieces))
         .add_system_set(SystemSet::on_enter(GameState::RestrictedInput).with_system(mark_pickable_pieces))
-        .add_system_set(SystemSet::on_update(GameState::RestrictedInput).with_system(handle_picking_events))
         .add_system_set(SystemSet::on_exit(GameState::RestrictedInput).with_system(unmark_pickable_pieces))
+        .add_system(handle_picking_events.after(mark_pickable_pieces))
         .add_system(bevy::window::close_on_esc);
     }
 }
@@ -35,6 +34,7 @@ fn handle_picking_events(
         mut remove_highlight_writer: EventWriter<RemoveHighlightEntityEvent>,
         mut trymove_writer: EventWriter<TryMoveEvent>,
         mut input_move: ResMut<InputMove>,
+        mut game_state: ResMut<State<GameState>>
     ){
 
     
@@ -59,11 +59,13 @@ fn handle_picking_events(
                 match selection_event {
                     SelectionEvent::JustSelected(entity) => {
                         if let Ok(piece_comp) = pc_query.get(*entity){
+                            info!("Piece selected: {:?}", piece_comp.pos);
                             input_move.from = Some(piece_comp.pos);
                             input_move.to = None;
                             select_writer.send(PieceSelectEvent{pos: piece_comp.pos});
 
                         } else if let Ok(board_sq_comp) =  bsc_query.get(*entity){
+                            info!("Square selected: {:?}", board_sq_comp.pos);
                             board_sq_selected = true;
                             input_move.to = Some(board_sq_comp.pos);
                             if input_move.from.is_some(){
@@ -71,6 +73,7 @@ fn handle_picking_events(
                                 let to = input_move.to.unwrap();
                                 input_move.from = None;
                                 input_move.to = None;
+                                game_state.set(GameState::TryMove).unwrap();
                                 trymove_writer.send(TryMoveEvent{
                                     from,
                                     to
@@ -112,7 +115,8 @@ fn mark_pickable_pieces(
     sq_query: Query<(Entity, &BoardSquareComponent)>,
     game_state: Res<State<GameState>>,
     possible_moves: Option<Res<PossibleMoves>>,
-    mut selection_event: EventWriter<PickingEvent>,
+    mut input_move: ResMut<InputMove>,
+    mut select_writer: EventWriter<PieceSelectEvent>,
 ){
     if *game_state.current() == GameState::RestrictedInput{
         if let Some(m) = possible_moves {
@@ -122,7 +126,8 @@ fn mark_pickable_pieces(
             for (entity, piece) in query.iter(){
                 if piece.pos == source_pos{
                     commands.entity(entity).insert(PickableBundle::default());
-                    selection_event.send(PickingEvent::Selection(SelectionEvent::JustSelected(entity)));
+                    input_move.from = Some(source_pos);
+                    select_writer.send(PieceSelectEvent { pos: source_pos });
                     info!("Marked piece {:?} as pickable", source_pos);
                 }
             }

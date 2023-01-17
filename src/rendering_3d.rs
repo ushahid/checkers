@@ -19,19 +19,14 @@ impl Plugin for CheckersRendering3dPlugin {
         .add_system(handle_piece_deselection)
         .add_system(handle_add_highlight)
         .add_system(handle_remove_highlight)
-        .add_system(handle_move)
-        .add_system(handle_kill)
-        .add_system(handle_upgrade);
+        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_move))
+        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_kill))
+        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_upgrade));
     }
 }
 
 #[derive(Component)]
 pub struct Dim;
-
-
-
-#[derive(Component)]
-pub struct Hovering;
 
 
 
@@ -153,6 +148,7 @@ fn handle_kill(mut commands: Commands, mut kill_event: EventReader<KillPieceEven
 
 fn handle_move(mut query: Query<(&mut Transform, &mut PieceComponent)>, mut move_event: EventReader<PieceMoveEvent>,  board_config: Res<BoardConfig>){
     for event in move_event.iter(){
+        println!("Move from {:?} {:?}", event.from, event.to);
         for (mut transform, mut piece_component) in query.iter_mut(){
             if piece_component.pos == event.from {
                 let center = compute_piece_center(event.to.row, event.to.col, &board_config);
@@ -178,26 +174,24 @@ fn compute_piece_center(row: usize, col: usize, board_config: &BoardConfig) -> V
 }
 
 
-fn handle_piece_selection(mut commands: Commands, mut query: Query<(Entity, &mut Transform, &PieceComponent)>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceSelectEvent>, hover_query: Query<&Hovering>){
+fn handle_piece_selection(mut query: Query<(&mut Transform, &PieceComponent)>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceSelectEvent>){
     for event in ev.iter(){
-        for (entity, mut transform, piece_component) in query.iter_mut(){
-            if piece_component.pos == event.pos && !hover_query.get(entity).is_ok(){
-                transform.translation.y += board_config.piece_hover_height;
-                commands.entity(entity).insert(Hovering);
+        // info!("Selection event: {:?}", event.pos);
+        for (mut transform, piece_component) in query.iter_mut(){
+            if piece_component.pos == event.pos {
+                transform.translation.y = ((board_config.board_height + board_config.piece_height) / 2.0) + board_config.piece_hover_height;
             }
         }
     }
 }
 
 
-fn handle_piece_deselection(mut commands: Commands, mut query: Query<(Entity, &mut Transform, &mut PieceComponent)>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceDeselectEvent>, hover_query: Query<&Hovering>){
+fn handle_piece_deselection(mut query: Query<(&mut Transform, &mut PieceComponent)>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceDeselectEvent>){
     for event in ev.iter(){
-        for (entity, mut transform, piece_component) in query.iter_mut(){
-            if piece_component.pos == event.pos && hover_query.get(entity).is_ok(){
-                transform.translation.y += board_config.piece_hover_height;
-                let position = compute_piece_center(piece_component.pos.row, piece_component.pos.col, &board_config);
-                transform.translation.y = position.y;
-                commands.entity(entity).remove::<Hovering>();
+        // info!("Deselection event: {:?}", event.pos);
+        for (mut transform, piece_component) in query.iter_mut(){
+            if piece_component.pos == event.pos {                
+                transform.translation.y = (board_config.board_height + board_config.piece_height) / 2.0;
             }
         }
     }
