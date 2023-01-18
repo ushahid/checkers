@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use crate::{
     state::{GameState, CheckersState, PieceType, PieceColor},
-    checkers_events::*
+    checkers_events::*,
+    ai::AIStatus
 };
 
 
@@ -35,6 +36,12 @@ pub struct PossibleMoves {
 pub struct Position {
     pub row: usize,
     pub col: usize
+}
+
+impl Position {
+    pub fn new(row: usize, col: usize) -> Self {
+        Position { row, col }
+    }
 }
 
 
@@ -216,9 +223,11 @@ fn handle_move(
     mut checkers_state: ResMut<CheckersState>,
     mut game_state: ResMut<State<GameState>>,
     mut kill_writer: EventWriter<KillPieceEvent>,
-    mut upgrade_writer: EventWriter<UpgradePieceEvent>
+    mut upgrade_writer: EventWriter<UpgradePieceEvent>,
+    ai_status: Res<AIStatus>
 ){
     for ev in move_event.iter(){
+        info!("Moving");
         let mut is_kill: bool = false;
         let mut multi_kill: bool = false;
         let mut upgraded: bool = false;
@@ -262,7 +271,14 @@ fn handle_move(
             let possible_kill_moves: Vec<Move> = possible_kill_moves_piece(ev.to.row, ev.to.col, &checkers_state);
             if possible_kill_moves.len() > 0 {
                 commands.insert_resource(PossibleMoves{moves: possible_kill_moves});
-                game_state.set(GameState::RestrictedInput).unwrap();
+                if ai_status.enabled {
+                    match checkers_state.turn {
+                        PieceColor::Red => game_state.set(GameState::AIMove).unwrap(),
+                        PieceColor::Black => game_state.set(GameState::RestrictedInput).unwrap()
+                    }
+                } else {
+                    game_state.set(GameState::RestrictedInput).unwrap();
+                }
                 multi_kill = true;
             }
         }
@@ -272,7 +288,14 @@ fn handle_move(
                 PieceColor::Red => PieceColor::Black,
                 PieceColor::Black => PieceColor::Red
             };
-            game_state.set(GameState::Input).unwrap();
+            if ai_status.enabled{
+                match checkers_state.turn {
+                    PieceColor::Red => game_state.set(GameState::AIMove).unwrap(),
+                    PieceColor::Black => game_state.set(GameState::Input).unwrap()
+                }
+            } else {
+                game_state.set(GameState::Input).unwrap();
+            }
         }
         info!("{:?}'s turn", checkers_state.turn);
     }

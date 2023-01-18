@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-
+use crate::logic::Move;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum GameState {
@@ -7,6 +7,7 @@ pub enum GameState {
     TryMove,
     Move,
     RestrictedInput,
+    AIMove
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

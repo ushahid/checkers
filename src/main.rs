@@ -7,6 +7,7 @@ use config::*;
 use state::CheckersState;
 use logic::CheckersGameLogicPlugin;
 use checkers_events::CheckersEventsPlugin;
+use ai::CheckersAIPlugin;
 
 mod rendering_3d;
 mod input_3d;
@@ -14,6 +15,8 @@ mod config;
 mod state;
 mod logic;
 mod checkers_events;
+mod ai;
+mod search;
 
 
 fn main() {
@@ -36,6 +39,7 @@ fn main() {
         .add_plugin(CheckersRendering3dPlugin)
         .add_plugin(CheckersInput3dPlugin)
         .add_plugin(CheckersEventsPlugin)
+        .add_plugin(CheckersAIPlugin)
         .run();
 }
 
