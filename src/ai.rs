@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::{logic::{Move, Position}, state::{GameState, CheckersState, PieceType}, checkers_events::TryMoveEvent, alphabeta::{minimax_alpha_beta, TwoPlayerGameState}};
+use crate::{logic::{Move, Position}, state::{GameState, CheckersState, PieceType, PieceColor}, checkers_events::TryMoveEvent, alphabeta::{minimax_alpha_beta, TwoPlayerGameState}};
 use std::collections::VecDeque;
 
 
@@ -43,7 +43,7 @@ fn make_ai_move(mut ai_moves: ResMut<AIMoves>, mut trymove_writer: EventWriter<T
 
 
 fn find_best_moves(state: &CheckersState) -> Vec<Move>{
-    let (_, best_move) = minimax_alpha_beta(state, 10, f32::NEG_INFINITY, f32::INFINITY, true);
+    let (_, best_move) = minimax_alpha_beta(state, 10, f32::NEG_INFINITY, f32::INFINITY, true, &state.turn);
     info!("Best move: {:?}", best_move);
     return best_move.unwrap();
 }
@@ -86,6 +86,7 @@ impl JumpNode {
 impl TwoPlayerGameState for CheckersState {
     type GameState = CheckersState;
     type GameMove = Vec<Move>;
+    type Player = PieceColor;
     
 
     fn get_possible_moves(&self) -> Vec<Self::GameMove>{
@@ -143,14 +144,14 @@ impl TwoPlayerGameState for CheckersState {
 
     fn next_state_with_move(&self, moves: &Self::GameMove) -> Self::GameState {
         let mut next_state = self.clone();
-        for m in moves {
-            next_state.update_with_move(&m);
+        for m in moves.iter() {
+            next_state.update_with_move(m);
         }
         return next_state;
     }
 
 
-    fn score_state(&self) -> f32 {
+    fn score_state(&self, turn: &Self::Player) -> f32 {
         let mut my_men = 0.;
         let mut my_kings = 0.;
         let mut opp_men = 0.;
@@ -162,7 +163,7 @@ impl TwoPlayerGameState for CheckersState {
         for row in 0..self.board.len(){
             for col in 0..self.board.len(){
                 if let Some(piece) =  self.board[row][col]{
-                    if self.turn == piece.col {
+                    if *turn == piece.col {
                         match piece.typ {
                             PieceType::Man => {
                                 my_men += 1.;
@@ -195,9 +196,9 @@ impl TwoPlayerGameState for CheckersState {
         let opp_pieces = opp_men + opp_kings;
 
         if my_pieces as i32 == 0 {
-            return f32::MAX;
-        } else if opp_pieces as i32 == 0 {
             return f32::MIN;
+        } else if opp_pieces as i32 == 0 {
+            return f32::MAX;
         }
         
         let mut score = 0.;
@@ -214,6 +215,6 @@ impl TwoPlayerGameState for CheckersState {
     }
     
     fn is_game_over(&self) -> bool {
-        return self.is_loser(self.turn);
+        return self.get_winner().is_some();
     }
 }
