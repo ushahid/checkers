@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::logic::Position;
+use crate::logic::{Move, Position};
 
 pub struct CheckersEventsPlugin;
 
@@ -28,13 +28,11 @@ pub struct RemoveHighlightEntityEvent {
 
 
 pub struct TryMoveEvent{
-    pub from: Position,
-    pub to: Position
+    pub game_move: Move
 }
 
 pub struct PieceMoveEvent{
-    pub from: Position,
-    pub to: Position
+    pub game_move: Move
 }
 
 pub struct KillPieceEvent {

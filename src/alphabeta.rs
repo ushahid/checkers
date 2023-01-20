@@ -4,15 +4,15 @@ pub trait TwoPlayerGameState {
     type GameMove;
 
     fn get_possible_moves(&self) -> Vec<Self::GameMove>;
-    fn next_state_with_move(&self, m: &Self::GameMove) -> Self::GameState;
+    fn next_state_with_move(&self, m: &Self::GameMove) -> &Self::GameState;
     fn score_state(&self) -> f32;
 }
 
 
 pub fn minimax_alpha_beta<M>(state: &impl TwoPlayerGameState<GameMove=M>, depth: u32, alpha: f32, beta: f32, is_maximizing: bool) -> (f32, Option<M>)
 {
-    let mut max_alpha = alpha;
-    let mut max_beta = beta;
+    let mut alpha = alpha;
+    let mut beta = beta;
 
     if depth == 0 {
         return (state.score_state(), None);
@@ -20,10 +20,10 @@ pub fn minimax_alpha_beta<M>(state: &impl TwoPlayerGameState<GameMove=M>, depth:
 
     if is_maximizing {
         let mut max_score = f32::NEG_INFINITY;
-        let best_move: Option<M> = None;
+        let mut best_move: Option<M> = None;
         for m in state.get_possible_moves(){
             let next_state = state.next_state_with_move(&m);
-            let (score, _)= minimax_alpha_beta(&next_state, depth - 1, alpha, beta, false);
+            let (score, _)= minimax_alpha_beta(next_state, depth - 1, alpha, beta, false);
 
             if score > max_score  {
                 max_score = score;
@@ -40,11 +40,11 @@ pub fn minimax_alpha_beta<M>(state: &impl TwoPlayerGameState<GameMove=M>, depth:
         }
         return (max_score, best_move);
     } else {
-        let best_move: Option<M> = None;
+        let mut best_move: Option<M> = None;
         let mut min_score = f32::INFINITY;
         for m in state.get_possible_moves(){
             let next_state = state.next_state_with_move(&m);
-            let (score, _) = minimax_alpha_beta(&next_state, depth - 1, alpha, beta, false);
+            let (score, _) = minimax_alpha_beta(next_state, depth - 1, alpha, beta, false);
             if score < min_score {
                 min_score = score;
                 best_move = Some(m)

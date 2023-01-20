@@ -75,8 +75,7 @@ fn handle_picking_events(
                                 input_move.to = None;
                                 game_state.set(GameState::TryMove).unwrap();
                                 trymove_writer.send(TryMoveEvent{
-                                    from,
-                                    to
+                                    game_move: Move{ from, to }
                                 });
                             }
                         } else {

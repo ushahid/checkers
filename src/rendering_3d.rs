@@ -149,12 +149,12 @@ fn handle_kill(mut commands: Commands, mut kill_event: EventReader<KillPieceEven
 fn handle_move(mut query: Query<(&mut Transform, &mut PieceComponent)>, mut move_event: EventReader<PieceMoveEvent>,  board_config: Res<BoardConfig>){
     for event in move_event.iter(){
         for (mut transform, mut piece_component) in query.iter_mut(){
-            if piece_component.pos == event.from {
-                let center = compute_piece_center(event.to.row, event.to.col, &board_config);
+            if piece_component.pos == event.game_move.from {
+                let center = compute_piece_center(event.game_move.to.row, event.game_move.to.col, &board_config);
                 transform.translation.x = center.x;
                 transform.translation.y = center.y;
                 transform.translation.z = center.z;
-                piece_component.pos = event.to;
+                piece_component.pos = event.game_move.to;
             }
         }
     }

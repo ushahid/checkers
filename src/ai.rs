@@ -1,15 +1,15 @@
 use bevy::prelude::*;
-use crate::{logic::Move, state::{GameState, CheckersState, PieceType, PieceColor}, checkers_events::TryMoveEvent, search::{minimax_alpha_beta, TwoPlayerGameState}};
+use crate::{logic::Move, state::{GameState, CheckersState, PieceType}, checkers_events::TryMoveEvent, alphabeta::{minimax_alpha_beta, TwoPlayerGameState}};
 use std::collections::VecDeque;
 
-pub struct CheckersAIPlugin;
 
+pub struct CheckersAIPlugin;
 
 
 impl Plugin for CheckersAIPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(AIMoves{moves: VecDeque::<Move>::new()})
-        .insert_resource(AIStatus{enabled: true})
+        .insert_resource(AIStatus{enabled: false})
         .add_system_set(SystemSet::on_update(GameState::AIMove).with_system(make_ai_move));
     }
 }
@@ -19,6 +19,7 @@ impl Plugin for CheckersAIPlugin {
 pub struct AIStatus {
     pub enabled: bool
 }
+
 
 #[derive(Resource)]
 struct AIMoves {
@@ -30,8 +31,7 @@ fn make_ai_move(mut ai_moves: ResMut<AIMoves>, mut trymove_writer: EventWriter<T
     if let Some(m) = ai_moves.moves.pop_front() {
         game_state.set(GameState::TryMove).unwrap();
         trymove_writer.send(TryMoveEvent{
-            from: m.from,
-            to: m.to
+            game_move: m
         });
     } else {
         for m in find_best_moves(&checkers_state){
@@ -42,16 +42,16 @@ fn make_ai_move(mut ai_moves: ResMut<AIMoves>, mut trymove_writer: EventWriter<T
 
 
 fn find_best_moves(state: &CheckersState) -> Vec<Move>{
-    let (score, best_move) = minimax_alpha_beta(state, 10, f32::NEG_INFINITY, f32::INFINITY, true);
+    let (_, best_move) = minimax_alpha_beta(state, 10, f32::NEG_INFINITY, f32::INFINITY, true);
     return best_move.unwrap();
 }
-
 
 
 impl TwoPlayerGameState for CheckersState {
     type GameState = CheckersState;
     type GameMove = Vec<Move>;
     
+
     fn get_possible_moves(&self) -> Vec<Self::GameMove>{
         let moves: Vec<Vec<Move>> = Vec::new();
         for row in 0..self.board.len(){
@@ -63,26 +63,26 @@ impl TwoPlayerGameState for CheckersState {
     }
 
 
-    fn next_state_with_move(&self, m: &Self::GameMove) -> Self::GameState {
-        return self.clone();
+    fn next_state_with_move(&self, m: &Self::GameMove) -> &Self::GameState {
+        return self;
     }
 
 
-
     fn score_state(&self) -> f32 {
-        let mut score = 0;
-        let my_pieces = 0;
-        let opponent_pieces = 0;
+        let mut score = 0.;
+        let mut my_pieces = 0;
+        let mut opponent_pieces = 0;
+
         for row in 0..self.board.len(){
             for col in 0..self.board.len(){
                 if let Some(piece) =  self.board[row][col]{
                     let delta = match piece.typ {
                         PieceType::King => {
-                            10
+                            10.
                         },
                         PieceType::Man => {
-                            5
-                        }   
+                            5.
+                        }
                     };
                     if piece.col == self.turn {
                         score += delta;
@@ -94,6 +94,7 @@ impl TwoPlayerGameState for CheckersState {
                 }
             }
         }
+
         if my_pieces == 0 {
             return f32::NEG_INFINITY;
         }
@@ -101,7 +102,7 @@ impl TwoPlayerGameState for CheckersState {
         if opponent_pieces == 0 {
             return f32::INFINITY;
         }
+
         return score;
     }
 }
-

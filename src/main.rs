@@ -16,7 +16,7 @@ mod state;
 mod logic;
 mod checkers_events;
 mod ai;
-mod search;
+mod alphabeta;
 
 
 fn main() {
