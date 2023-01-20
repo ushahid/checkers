@@ -195,9 +195,9 @@ impl TwoPlayerGameState for CheckersState {
         let opp_pieces = opp_men + opp_kings;
 
         if my_pieces as i32 == 0 {
-            return f32::NEG_INFINITY;
+            return f32::MAX;
         } else if opp_pieces as i32 == 0 {
-            return f32::INFINITY;
+            return f32::MIN;
         }
 
         let piece_ratio_factor = my_pieces / opp_pieces;
