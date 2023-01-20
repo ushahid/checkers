@@ -213,11 +213,7 @@ impl TwoPlayerGameState for CheckersState {
         return score;
     }
     
-    fn is_current_winner(&self) -> Option<bool> {
-        if let Some(winner) = self.get_winner() {
-            return Some(winner == self.turn);
-        } else {
-            return None;
-        }
+    fn is_game_over(&self) -> bool {
+        return self.is_loser(self.turn);
     }
 }

@@ -5,7 +5,7 @@ pub trait TwoPlayerGameState {
     fn get_possible_moves(&self) -> Vec<Self::GameMove>;
     fn next_state_with_move(&self, m: &Self::GameMove) -> Self::GameState;
     fn score_state(&self) -> f32;
-    fn is_current_winner(&self) -> Option<bool>;
+    fn is_game_over(&self) -> bool;
 }
 
 
@@ -14,7 +14,7 @@ pub fn minimax_alpha_beta<M>(state: &impl TwoPlayerGameState<GameMove=M>, depth:
     let mut alpha = alpha;
     let mut beta = beta;
 
-    if state.is_current_winner().is_some(){
+    if state.is_game_over(){
         return (state.score_state(), None);
     }
 
