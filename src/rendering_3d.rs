@@ -60,12 +60,15 @@ fn handle_add_highlight(
     mut commands: Commands,
     mut highlight_event: EventReader<HighlightEntityEvent>,
     board_config: Res<BoardConfig>, query: Query<&Handle<StandardMaterial>>,
+    dim_query: Query<&Dim>,
     mut materials: ResMut<Assets<StandardMaterial>>
 ){
     for ev in highlight_event.iter(){
         if let Ok(material_handle) = query.get(ev.entity_id) {
-            dim_material(material_handle, &mut materials, board_config.hover_highlight_strength);
-            commands.entity(ev.entity_id).insert(Dim);
+            if let Err(_) = dim_query.get(ev.entity_id){
+                dim_material(material_handle, &mut materials, board_config.hover_highlight_strength);
+                commands.entity(ev.entity_id).insert(Dim);
+            }
         } else {
             panic!("Invalid entity handle");
         }

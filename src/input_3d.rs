@@ -78,18 +78,12 @@ fn handle_picking_events(
                                     game_move: Move{ from, to }
                                 });
                             }
-                        } else {
-                            panic!("Selected an entity that should not exist");
                         }
                     },
                     SelectionEvent::JustDeselected(entity) => {
                         if let Ok(piece_comp) = pc_query.get(*entity){
                             deselect_writer.send(PieceDeselectEvent{pos: piece_comp.pos});
                             piece_deselected = true;
-                        } else if bsc_query.get(*entity).is_ok(){
-                            ()
-                        } else {
-                            panic!("Deselected an entity that should not exist");
                         }
                     }
                 }
@@ -150,11 +144,8 @@ fn mark_pickable_pieces(
 
         // Mark relevant board squares pickable
         for (entity, square) in sq_query.iter() {
-            match checkers_state.board[square.pos.row][square.pos.col]{
-                None => {
-                    commands.entity(entity).insert(PickableBundle::default());
-                }
-                Some(_) => ()
+            if checkers_state.board[square.pos.row][square.pos.col].is_none(){
+                commands.entity(entity).insert(PickableBundle::default());
             }
         }
     }
@@ -167,7 +158,6 @@ fn unmark_pickable_pieces(
     query: Query<Entity, With<PickableMesh>>,
     hover_query: Query<&Hover>,
     mut remove_highlight_event: EventWriter<RemoveHighlightEntityEvent>,
-    mut events: ResMut<Events<PickingEvent>>
 ){
     for entity in query.iter(){
         if let Ok(hover) = hover_query.get(entity){
@@ -177,5 +167,4 @@ fn unmark_pickable_pieces(
         }
         commands.entity(entity).remove::<PickableBundle>();
     }
-    events.clear();
 }

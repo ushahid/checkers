@@ -127,7 +127,6 @@ fn handle_try_move(
         let is_valid: bool = is_valid_move(&ev.game_move, &checkers_state, move_from);
         if !is_valid{
             info!("Invalid move {:?}", ev.game_move);
-            // deselect_writer.send(PieceDeselectEvent { pos: ev.from });
             if possible_moves.moves.is_some(){
                 game_state.set(GameState::RestrictedInput).unwrap();
             } else {
