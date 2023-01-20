@@ -8,6 +8,7 @@ use state::CheckersState;
 use logic::CheckersGameLogicPlugin;
 use checkers_events::CheckersEventsPlugin;
 use ai::CheckersAIPlugin;
+use sound::CheckersSoundPlugin;
 
 mod rendering_3d;
 mod input_3d;
@@ -17,6 +18,7 @@ mod logic;
 mod checkers_events;
 mod ai;
 mod alphabeta;
+mod sound;
 
 
 fn main() {
@@ -40,6 +42,7 @@ fn main() {
         .add_plugin(CheckersInput3dPlugin)
         .add_plugin(CheckersEventsPlugin)
         .add_plugin(CheckersAIPlugin)
+        .add_plugin(CheckersSoundPlugin)
         .run();
 }
 

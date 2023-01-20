@@ -53,7 +53,7 @@ pub struct Move {
 }
 
 impl Move {
-    fn is_jump(&self) -> bool {
+    pub fn is_jump(&self) -> bool {
         if (self.from.row as i32 - self.to.row as i32).abs() != 2 {
             return false;
         }
