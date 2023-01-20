@@ -18,7 +18,7 @@ impl Plugin for CheckersInput3dPlugin {
         .add_system_set(SystemSet::on_exit(GameState::Input).with_system(unmark_pickable_pieces))
         .add_system_set(SystemSet::on_enter(GameState::RestrictedInput).with_system(mark_pickable_pieces))
         .add_system_set(SystemSet::on_exit(GameState::RestrictedInput).with_system(unmark_pickable_pieces))
-        .add_system(handle_picking_events.after(mark_pickable_pieces))
+        .add_system(handle_picking_events.after(mark_pickable_pieces).after(unmark_pickable_pieces))
         .add_system(bevy::window::close_on_esc);
     }
 }
