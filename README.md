@@ -1,10 +1,9 @@
-# checkers
-A simple game of American checkers written in bevy / rust
+# checker
+American checkers game written in bevy / rust with AI
 
 
 ## ToDo
-- Add AI
-- Add sound
-- Add menu
-- Add animations etc
-- Final Refactor
+- Add sounds
+- Add animations
+- Add menus
+- Final refactor
