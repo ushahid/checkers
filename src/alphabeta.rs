@@ -1,4 +1,3 @@
-
 pub trait TwoPlayerGameState {
     type GameState: TwoPlayerGameState;
     type GameMove;
@@ -6,6 +5,7 @@ pub trait TwoPlayerGameState {
     fn get_possible_moves(&self) -> Vec<Self::GameMove>;
     fn next_state_with_move(&self, m: &Self::GameMove) -> Self::GameState;
     fn score_state(&self) -> f32;
+    fn is_current_winner(&self) -> Option<bool>;
 }
 
 
@@ -14,16 +14,26 @@ pub fn minimax_alpha_beta<M>(state: &impl TwoPlayerGameState<GameMove=M>, depth:
     let mut alpha = alpha;
     let mut beta = beta;
 
+    if  let Some(winner) = state.is_current_winner(){
+        if winner {
+            return (f32::INFINITY, None);
+        } else {
+            return (f32::NEG_INFINITY, None)
+        }
+    }
+
     if depth == 0 {
         return (state.score_state(), None);
     }
+
 
     if is_maximizing {
         let mut max_score = f32::NEG_INFINITY;
         let mut best_move: Option<M> = None;
         for m in state.get_possible_moves(){
             let next_state = state.next_state_with_move(&m);
-            let (score, _)= minimax_alpha_beta(&next_state, depth - 1, alpha, beta, false);
+
+            let (score, _) = minimax_alpha_beta(&next_state, depth - 1, alpha, beta, false);
 
             if score > max_score  {
                 max_score = score;

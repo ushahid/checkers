@@ -34,6 +34,7 @@ fn make_ai_move(mut ai_moves: ResMut<AIMoves>, mut trymove_writer: EventWriter<T
             game_move: m
         });
     } else {
+        info!("Finding best move");
         for m in find_best_moves(&checkers_state){
             ai_moves.moves.push_back(m);
         }
@@ -43,6 +44,7 @@ fn make_ai_move(mut ai_moves: ResMut<AIMoves>, mut trymove_writer: EventWriter<T
 
 fn find_best_moves(state: &CheckersState) -> Vec<Move>{
     let (_, best_move) = minimax_alpha_beta(state, 10, f32::NEG_INFINITY, f32::INFINITY, true);
+    info!("Best move: {:?}", best_move);
     return best_move.unwrap();
 }
 
@@ -60,7 +62,6 @@ impl JumpNode {
     fn build_jump_tree(checkers_state: &CheckersState) -> Self {
         let mut root = JumpNode{game_move: None, children: None};
         let possible_captures = checkers_state.possible_captures();
-        // info!("Initial captures: {:?}", possible_captures);
         root.children = Self::build_tree_helper(checkers_state, &possible_captures);
         return root;
     }
@@ -92,18 +93,17 @@ impl TwoPlayerGameState for CheckersState {
 
         // create a tree of jump nodes
         let tree = JumpNode::build_jump_tree(self);
-        let mut current = VecDeque::<&JumpNode>::new();
-        let mut path = VecDeque::<Move>::new();
-        current.push_front(&tree);
+        let mut current = VecDeque::<(&JumpNode, Vec<Move>)>::new();
+        current.push_front((&tree, Vec::<Move>::new()));
         while current.len() > 0 {
-            while let Some(node) = current.pop_front(){
-                if let Some(m) = node.game_move {
-                    path.push_back(m)
-                }
+            while let Some(val) = current.pop_front(){
+                let (node, path) = val;
 
                 if let Some(ref children) = node.children {
-                    for m in children.iter(){
-                        current.push_front(m);
+                    for child_node in children.iter(){
+                        let mut new_path = path.clone();
+                        new_path.push(child_node.game_move.unwrap());
+                        current.push_front((child_node, new_path));
                     }
                 } else {
                     if path.len() > 0 {
@@ -111,10 +111,8 @@ impl TwoPlayerGameState for CheckersState {
                         for m in path.iter() {
                             v.push(*m);
                         }
-                        // info!("Move path is {:?}", v);
                         move_vectors.push(v);
                     }
-                    path.pop_back();
                 }
             }
         }
@@ -125,7 +123,7 @@ impl TwoPlayerGameState for CheckersState {
                 for col in 0..self.board.len(){
                     if let Some(piece) = self.board[row][col] {
                         if piece.col == self.turn {
-                            let valid_step_moves = self.valid_steps(&Position::new(row, col));
+                            let valid_step_moves = self.valid_steps(&Position::new(row, col), self.turn);
                             for step_move in valid_step_moves {
                                 let mut v = Vec::<Move>::new();
                                 v.push(step_move);
@@ -151,8 +149,6 @@ impl TwoPlayerGameState for CheckersState {
 
     fn score_state(&self) -> f32 {
         let mut score = 0.;
-        let mut my_pieces = 0;
-        let mut opponent_pieces = 0;
 
         for row in 0..self.board.len(){
             for col in 0..self.board.len(){
@@ -167,23 +163,20 @@ impl TwoPlayerGameState for CheckersState {
                     };
                     if piece.col == self.turn {
                         score += delta;
-                        my_pieces += 1;
                     } else {
                         score -= delta;
-                        opponent_pieces += 1;
                     }
                 }
             }
         }
-
-        if my_pieces == 0 {
-            return f32::NEG_INFINITY;
-        }
-
-        if opponent_pieces == 0 {
-            return f32::INFINITY;
-        }
-
         return score;
+    }
+    
+    fn is_current_winner(&self) -> Option<bool> {
+        if let Some(winner) = self.get_winner() {
+            return Some(winner == self.turn);
+        } else {
+            return None;
+        }
     }
 }

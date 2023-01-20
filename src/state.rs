@@ -7,7 +7,8 @@ pub enum GameState {
     TryMove,
     Move,
     RestrictedInput,
-    AIMove
+    AIMove,
+    GameOver
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -77,13 +78,13 @@ impl CheckersState {
     }
 
 
-    fn candidate_moves(&self, pos: &Position, distance: u32) -> Vec<Move>{
+    fn candidate_moves(&self, pos: &Position, distance: u32, turn:PieceColor) -> Vec<Move>{
         let mut moves = Vec::<Move>::new();
         let piece = self.at(pos);
 
         // check if valid piece and piece is owned by the player whose turn it is
         if let Some(piece) = piece {
-            if piece.col != self.turn {
+            if piece.col != turn {
                 return moves;
             }
 
@@ -114,16 +115,16 @@ impl CheckersState {
         return moves;
     }
 
-    fn candidate_jumps(&self, pos: &Position) -> Vec<Move> {
-        return self.candidate_moves(pos, 2);
+    fn candidate_jumps(&self, pos: &Position, turn: PieceColor) -> Vec<Move> {
+        return self.candidate_moves(pos, 2, turn);
     }
     
-    fn candidate_steps(&self, pos: &Position) -> Vec<Move>{
-        return self.candidate_moves(pos, 1);
+    fn candidate_steps(&self, pos: &Position, turn: PieceColor) -> Vec<Move>{
+        return self.candidate_moves(pos, 1, turn);
     }
 
-    pub fn valid_jumps(&self, pos: &Position) -> Vec<Move> {
-        return self.candidate_jumps(pos)
+    pub fn valid_jumps(&self, pos: &Position, turn: PieceColor) -> Vec<Move> {
+        return self.candidate_jumps(pos, turn)
                     .into_iter()
                     .filter(|m: &Move| -> bool {
                         if !self.is_empty(&m.to){
@@ -131,7 +132,7 @@ impl CheckersState {
                         }
                         let middle_pos: Position = m.middle_pos().unwrap();
                         if let Some(piece) = self.at(&middle_pos){
-                            if piece.col != self.turn {
+                            if piece.col != turn {
                                 return true;
                             }
                         }
@@ -140,8 +141,8 @@ impl CheckersState {
                     .collect()
     }
 
-    pub fn valid_steps(&self, pos: &Position) -> Vec<Move> {
-        return self.candidate_steps(pos)
+    pub fn valid_steps(&self, pos: &Position, turn: PieceColor) -> Vec<Move> {
+        return self.candidate_steps(pos, turn)
                         .into_iter()
                         .filter(|m| self.is_empty(&m.to))
                         .collect()
@@ -175,7 +176,7 @@ impl CheckersState {
 
         // switch turn
         if is_capture && !is_upgrade{
-            next_capture_moves.append(&mut self.valid_jumps(&m.to));
+            next_capture_moves.append(&mut self.valid_jumps(&m.to, self.turn));
         }
 
         if next_capture_moves.len() == 0 {
@@ -194,7 +195,7 @@ impl CheckersState {
             for col in 0..self.board.len(){
                 if let Some(piece) = self.board[row][col]{
                     if piece.col == self.turn {
-                        possible_captures.append(&mut self.valid_jumps(&Position{row, col}));
+                        possible_captures.append(&mut self.valid_jumps(&Position{row, col}, self.turn));
                     }
                 }
             }
@@ -212,5 +213,51 @@ impl CheckersState {
                 return row == 0;
             }
         }
+    }
+
+    fn possible_to_move(&self, player: PieceColor) -> bool {
+        for row in 0..self.board.len(){
+            for col in 0..self.board.len(){
+                if let Some(piece) = self.board[row][col] {
+                    if piece.col == player {
+                        let pos = Position{row, col};
+                        if self.valid_jumps(&pos, player).len() > 0 || self.valid_steps(&pos, player).len() > 0 {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    pub fn is_loser(&self, player: PieceColor) -> bool {
+        let mut player_pieces = 0;
+
+        for row in 0..self.board.len(){
+            for col in 0..self.board.len(){
+                if let Some(piece) = self.board[row][col] {
+                    if piece.col == player {
+                        player_pieces += 1;
+                    }
+                }
+            }
+        }
+
+        if player_pieces == 0 {
+            return true;
+        }
+
+        return !self.possible_to_move(player);
+    }
+
+    pub fn get_winner(&self) -> Option<PieceColor> {
+        if self.is_loser(PieceColor::Black) {
+            return Some(PieceColor::Red);
+        }
+        if self.is_loser(PieceColor::Red) {
+            return Some(PieceColor::Black);
+        }
+        return None;
     }
 }

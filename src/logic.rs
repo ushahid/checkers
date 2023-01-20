@@ -17,7 +17,7 @@ impl Plugin for CheckersGameLogicPlugin {
         .add_state(GameState::Input)
         .add_system_set(SystemSet::on_update(GameState::TryMove).with_system(handle_try_move))
         .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_move))
-        .add_system_set(SystemSet::on_exit(GameState::RestrictedInput).with_system(remove_resources));
+        .add_system_set(SystemSet::on_update(GameState::GameOver).with_system(handle_game_over));
     }
 }
 
@@ -76,8 +76,13 @@ impl Move {
 }
 
 
-fn remove_resources(mut commands: Commands){
-    commands.remove_resource::<PossibleMoves>()
+fn handle_game_over(mut win_reader: EventReader<VictoryEvent>){
+    for ev in win_reader.iter() {
+        match ev.winner {
+            PieceColor::Black => info!{"Black Won!"},
+            PieceColor::Red => info!{"Red Won!"}
+        }
+    }
 }
 
 
@@ -99,7 +104,7 @@ fn is_valid_move(m: &Move, checkers_state: &CheckersState, move_from: Option<Pos
             };
             return false;
         }
-    } else if checkers_state.valid_steps(&m.from).contains(m){
+    } else if checkers_state.valid_steps(&m.from, checkers_state.turn).contains(m){
         return true;
     }
     return false;
@@ -146,7 +151,8 @@ fn handle_move(
     mut kill_writer: EventWriter<KillPieceEvent>,
     mut upgrade_writer: EventWriter<UpgradePieceEvent>,
     ai_status: Res<AIStatus>,
-    mut possible_moves: ResMut<PossibleMoves>
+    mut possible_moves: ResMut<PossibleMoves>,
+    mut win_writer: EventWriter<VictoryEvent>
 ){
     for ev in move_event.iter(){
         let (capture_pos, is_upgrade, next_capture_moves) = checkers_state.update_with_move(&ev.game_move);
@@ -167,15 +173,23 @@ fn handle_move(
         } else {
             possible_moves.moves = None;
         }
-        
-        
-        if ai_status.enabled{
-            match checkers_state.turn {
-                PieceColor::Red => game_state.set(GameState::AIMove).unwrap(),
-                PieceColor::Black => game_state.set(next_input_state).unwrap()
-            }
+
+        if checkers_state.is_loser(checkers_state.turn){
+            let winner = match checkers_state.turn {
+                PieceColor::Black => PieceColor::Red,
+                PieceColor::Red => PieceColor::Black
+            };
+            win_writer.send(VictoryEvent{ winner });
+            game_state.set(GameState::GameOver).unwrap();
         } else {
-            game_state.set(next_input_state).unwrap();
+            if ai_status.enabled{
+                match checkers_state.turn {
+                    PieceColor::Red => game_state.set(GameState::AIMove).unwrap(),
+                    PieceColor::Black => game_state.set(next_input_state).unwrap()
+                }
+            } else {
+                game_state.set(next_input_state).unwrap();
+            }
         }
     }
 }

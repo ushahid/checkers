@@ -1,11 +1,12 @@
 use bevy::prelude::*;
-use crate::logic::{Move, Position};
+use crate::{logic::{Move, Position}, state::PieceColor};
 
 pub struct CheckersEventsPlugin;
 
 impl Plugin for CheckersEventsPlugin {
     fn build(&self, app: &mut App){
         app
+        .add_event::<VictoryEvent>()
         .add_event::<HighlightEntityEvent>()
         .add_event::<RemoveHighlightEntityEvent>()
         .add_event::<UpgradePieceEvent>()
@@ -51,4 +52,10 @@ pub struct PieceDeselectEvent{
 
 pub struct UpgradePieceEvent {
     pub pos: Position
+}
+
+
+
+pub struct VictoryEvent {
+    pub winner: PieceColor
 }
