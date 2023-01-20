@@ -233,7 +233,7 @@ fn add_pieces(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materi
                         material: materials.add(color.into()),
                         transform: Transform::from_xyz(position.x, position.y, position.z),
                         ..default()
-                    }).insert(PieceComponent{pos: Position{row, col}, color: piece.col, typ: piece.typ}).id();
+                    }).insert(PieceComponent{pos: Position::new(row, col), color: piece.col, typ: piece.typ}).id();
                     if piece.typ == PieceType::King {
                         let child = commands.spawn(PbrBundle {
                             mesh: meshes.add(Mesh::from(shape::Box{
@@ -339,7 +339,7 @@ fn add_board(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materia
                                     })),
                     material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
                     ..default()
-                }).insert(BoardSquareComponent{pos: Position{row: z, col: x}}).id();
+                }).insert(BoardSquareComponent{pos: Position::new(z, x)}).id();
                 commands.entity(board).push_children(&[child]);
             }
         }

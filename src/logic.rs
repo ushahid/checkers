@@ -13,6 +13,7 @@ impl Plugin for CheckersGameLogicPlugin {
     fn build(&self, app: &mut App) {
         app
         .insert_resource(InputMove{from: None, to: None})
+        .insert_resource(PossibleMoves{moves: None})
         .add_state(GameState::Input)
         .add_system_set(SystemSet::on_update(GameState::TryMove).with_system(handle_try_move))
         .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_move))
@@ -29,7 +30,7 @@ pub struct InputMove {
 
 #[derive(Resource)]
 pub struct PossibleMoves {
-    pub moves: Vec<Move>
+    pub moves: Option<Vec<Move>>
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -70,10 +71,7 @@ impl Move {
         let row_delta: i32 = ((self.from.row as i32) - (self.to.row as i32)).signum();
         let col_delta: i32 = ((self.from.col as i32) - (self.to.col as i32)).signum();
         
-        return Some(Position{
-                                row: (self.from.row as i32 - row_delta) as usize,
-                                col: (self.from.col as i32 - col_delta) as usize
-                    });
+        return Some(Position::new((self.from.row as i32 - row_delta) as usize, (self.from.col as i32 - col_delta) as usize));
     }
 }
 
@@ -83,7 +81,13 @@ fn remove_resources(mut commands: Commands){
 }
 
 
-fn is_valid_move(m: &Move, checkers_state: &CheckersState) -> bool {
+fn is_valid_move(m: &Move, checkers_state: &CheckersState, move_from: Option<Position>) -> bool {
+    if let Some(move_from) = move_from {
+        if move_from != m.from{
+            info! {"Invalid move! Can only move {:?}", move_from}
+            return false;
+        }
+    }
     let possible_jumps = checkers_state.possible_captures();
     if possible_jumps.len() > 0 {
         if possible_jumps.contains(m){
@@ -107,14 +111,19 @@ fn handle_try_move(
     checkers_state: Res<CheckersState>,
     mut move_writer: EventWriter<PieceMoveEvent>,
     mut game_state: ResMut<State<GameState>>,
-    possible_moves: Option<Res<PossibleMoves>>
+    possible_moves: Res<PossibleMoves>
 ){
     for ev in trymove_event.iter(){
-        let is_valid: bool = is_valid_move(&ev.game_move, &checkers_state);
+        let move_from = match possible_moves.moves {
+            Some(ref m) => Some(m[0].from),
+            None => None
+        };
+        
+        let is_valid: bool = is_valid_move(&ev.game_move, &checkers_state, move_from);
         if !is_valid{
             info!("Invalid move {:?}", ev.game_move);
             // deselect_writer.send(PieceDeselectEvent { pos: ev.from });
-            if possible_moves.is_some(){
+            if possible_moves.moves.is_some(){
                 game_state.set(GameState::RestrictedInput).unwrap();
             } else {
                 game_state.set(GameState::Input).unwrap();
@@ -131,13 +140,13 @@ fn handle_try_move(
 
 
 fn handle_move(
-    mut commands: Commands,
     mut move_event: EventReader<PieceMoveEvent>,
     mut checkers_state: ResMut<CheckersState>,
     mut game_state: ResMut<State<GameState>>,
     mut kill_writer: EventWriter<KillPieceEvent>,
     mut upgrade_writer: EventWriter<UpgradePieceEvent>,
-    ai_status: Res<AIStatus>
+    ai_status: Res<AIStatus>,
+    mut possible_moves: ResMut<PossibleMoves>
 ){
     for ev in move_event.iter(){
         let (capture_pos, is_upgrade, next_capture_moves) = checkers_state.update_with_move(&ev.game_move);
@@ -147,13 +156,16 @@ fn handle_move(
 
         if is_upgrade {
             upgrade_writer.send(UpgradePieceEvent { pos: ev.game_move.to});
+            info!("Upgraded!");
         }
 
 
         let mut next_input_state: GameState = GameState::Input;
         if capture_pos.is_some() &&  !is_upgrade && next_capture_moves.len() > 0 {
-            commands.insert_resource(PossibleMoves{moves: next_capture_moves});
+            possible_moves.moves = Some(next_capture_moves);
             next_input_state = GameState::RestrictedInput;
+        } else {
+            possible_moves.moves = None;
         }
         
         

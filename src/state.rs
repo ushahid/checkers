@@ -28,7 +28,7 @@ pub struct CheckersPiece {
     pub typ: PieceType
 }
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct CheckersState {
     pub turn: PieceColor,
     pub board: Vec<Vec<Option<CheckersPiece>>>
@@ -59,7 +59,7 @@ impl CheckersState {
         return CheckersState { turn: PieceColor::Black, board };
     }
 
-    fn at<'a>(&self, pos: &Position) -> Option<CheckersPiece> {
+    fn at(&self, pos: &Position) -> Option<CheckersPiece> {
         if self.board[pos.row][pos.col].is_none(){
             return None;
         }
@@ -104,7 +104,7 @@ impl CheckersState {
                     let row = pos.row as i32 + distance as i32 * row_delta;
                     let col = pos.col as i32 + distance as i32 * col_delta;
                     if self.is_valid_dim(row) && self.is_valid_dim(col){
-                        moves.push(Move{ from: *pos, to: Position{row: row as usize, col: col as usize} });
+                        moves.push(Move{ from: *pos, to: Position::new(row as usize, col as usize)});
                     }
                 }
             }
@@ -165,8 +165,11 @@ impl CheckersState {
         }
 
         // if upgraded, piece already moved
-        if self.final_row(m.to.row) && self.at(&m.to).unwrap().typ == PieceType::Man{
-            self.board[m.to.row][m.to.col].unwrap().typ = PieceType::King;
+        if self.final_row(m.to.row) && self.at(&m.to).unwrap().typ == PieceType::Man {
+            self.board[m.to.row][m.to.col] = Some(CheckersPiece {
+                col: self.turn,
+                typ: PieceType::King
+            });
             is_upgrade = true;
         }
 
@@ -203,10 +206,10 @@ impl CheckersState {
     fn final_row(&self, row: usize) -> bool{
         match self.turn {
             PieceColor::Red => {
-                return row == 0;
+                return row == self.board.len() - 1;
             }
             PieceColor::Black => {
-                return row == self.board.len() - 1;
+                return row == 0;
             }
         }
     }
