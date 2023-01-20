@@ -128,7 +128,7 @@ impl TwoPlayerGameState for CheckersState {
                         if piece.col == self.turn {
                             let valid_step_moves = self.valid_steps(&Position::new(row, col), self.turn);
                             for step_move in valid_step_moves {
-                                let mut v = Vec::<Move>::new();
+                                let mut v = Vec::<Move>::with_capacity(1);
                                 v.push(step_move);
                                 move_vectors.push(v);
                             }
@@ -199,21 +199,13 @@ impl TwoPlayerGameState for CheckersState {
         } else if opp_pieces as i32 == 0 {
             return f32::MIN;
         }
-
-        let piece_ratio_factor = my_pieces / opp_pieces;
         
         let mut score = 0.;
-        score += my_men * 75.;
-        score += my_kings * 125.;
+        score += my_men * 50.;
+        score += my_kings * 75.;
 
         score -= opp_men * 50.;
-        score -= opp_kings * 100.;
-
-        if piece_ratio_factor > 2. {
-            score -= opp_pieces * 10.;
-        } else if piece_ratio_factor < 0.5 {
-            score += my_pieces * 10.;
-        }
+        score -= opp_kings * 75.;
 
         score += my_kings_middle * 2.;
         score -= opp_kings_middle * 2.;
