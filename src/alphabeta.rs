@@ -14,12 +14,8 @@ pub fn minimax_alpha_beta<M>(state: &impl TwoPlayerGameState<GameMove=M>, depth:
     let mut alpha = alpha;
     let mut beta = beta;
 
-    if  let Some(winner) = state.is_current_winner(){
-        if winner {
-            return (f32::INFINITY, None);
-        } else {
-            return (f32::NEG_INFINITY, None)
-        }
+    if state.is_current_winner().is_some(){
+        return (state.score_state(), None);
     }
 
     if depth == 0 {

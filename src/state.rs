@@ -260,4 +260,8 @@ impl CheckersState {
         }
         return None;
     }
+
+    pub fn is_in_middle(&self, pos: Position) -> bool{
+        return self.is_valid_dim(pos.row as i32 + 2) && self.is_valid_dim(pos.row as i32 - 2) && self.is_valid_dim(pos.col as i32 + 2) && self.is_valid_dim(pos.col as i32 - 2);
+    }
 }

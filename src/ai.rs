@@ -93,22 +93,25 @@ impl TwoPlayerGameState for CheckersState {
 
         // create a tree of jump nodes
         let tree = JumpNode::build_jump_tree(self);
-        let mut current = VecDeque::<(&JumpNode, Vec<Move>)>::new();
-        current.push_front((&tree, Vec::<Move>::new()));
+        let mut current = VecDeque::<(&JumpNode, Option<Vec<Move>>)>::new();
+        current.push_front((&tree, None));
         while current.len() > 0 {
             while let Some(val) = current.pop_front(){
                 let (node, path) = val;
 
                 if let Some(ref children) = node.children {
                     for child_node in children.iter(){
-                        let mut new_path = path.clone();
+                        let mut new_path = match path {
+                            Some(ref p) => p.clone(),
+                            None => Vec::new()
+                        };
                         new_path.push(child_node.game_move.unwrap());
-                        current.push_front((child_node, new_path));
+                        current.push_front((child_node, Some(new_path)));
                     }
                 } else {
-                    if path.len() > 0 {
-                        let mut v = Vec::<Move>::with_capacity(path.len());
-                        for m in path.iter() {
+                    if let Some(p) = path {
+                        let mut v = Vec::<Move>::with_capacity(p.len());
+                        for m in p.iter() {
                             v.push(*m);
                         }
                         move_vectors.push(v);
@@ -148,27 +151,73 @@ impl TwoPlayerGameState for CheckersState {
 
 
     fn score_state(&self) -> f32 {
-        let mut score = 0.;
+        let mut my_men = 0.;
+        let mut my_kings = 0.;
+        let mut opp_men = 0.;
+        let mut opp_kings = 0.;
+        let mut opp_kings_middle = 0.;
+        let mut my_kings_middle = 0.;
+
 
         for row in 0..self.board.len(){
             for col in 0..self.board.len(){
                 if let Some(piece) =  self.board[row][col]{
-                    let delta = match piece.typ {
-                        PieceType::King => {
-                            10.
-                        },
-                        PieceType::Man => {
-                            5.
+                    if self.turn == piece.col {
+                        match piece.typ {
+                            PieceType::Man => {
+                                my_men += 1.;
+                            }
+                            PieceType::King => {
+                                my_kings += 1.;
+                                if self.is_in_middle(Position::new(row, col)){
+                                    my_kings_middle += 1.;
+                                }
+                            }
                         }
-                    };
-                    if piece.col == self.turn {
-                        score += delta;
                     } else {
-                        score -= delta;
+                        match piece.typ {
+                            PieceType::Man => {
+                                opp_men += 1.;
+                            }
+                            PieceType::King => {
+                                opp_kings += 1.;
+                                if self.is_in_middle(Position::new(row, col)){
+                                    opp_kings_middle += 1.;
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+
+        let my_pieces = my_men + my_kings;
+        let opp_pieces = opp_men + opp_kings;
+
+        if my_pieces as i32 == 0 {
+            return f32::NEG_INFINITY;
+        } else if opp_pieces as i32 == 0 {
+            return f32::INFINITY;
+        }
+
+        let piece_ratio_factor = my_pieces / opp_pieces;
+        
+        let mut score = 0.;
+        score += my_men * 75.;
+        score += my_kings * 125.;
+
+        score -= opp_men * 50.;
+        score -= opp_kings * 100.;
+
+        if piece_ratio_factor > 2. {
+            score -= opp_pieces * 10.;
+        } else if piece_ratio_factor < 0.5 {
+            score += my_pieces * 10.;
+        }
+
+        score += my_kings_middle * 2.;
+        score -= opp_kings_middle * 2.;
+
         return score;
     }
     
