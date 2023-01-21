@@ -3,6 +3,8 @@ use crate::logic::{Move, Position};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum GameState {
+    Menu,
+    BoardSetup,
     Input,
     TryMove,
     Move,

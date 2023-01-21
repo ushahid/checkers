@@ -15,7 +15,7 @@ impl Plugin for CheckersRendering3dPlugin {
     fn build(&self, app: &mut App){
         app
         .insert_resource(ClearColor(Color::BLACK))
-        .add_startup_system(setup_board)
+        .add_system_set(SystemSet::on_update(GameState::BoardSetup).with_system(setup_board))
         .add_system(handle_piece_deselection)
         .add_system(handle_add_highlight)
         .add_system(handle_remove_highlight)
@@ -172,9 +172,10 @@ fn handle_piece_deselection(mut query: Query<(&mut Transform, &mut PieceComponen
 
 
 // System to add board and pieces
-fn setup_board(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>, board_config: Res<BoardConfig>, checkers_state: Res<CheckersState>){
+fn setup_board(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>, board_config: Res<BoardConfig>, checkers_state: Res<CheckersState>, mut game_state: ResMut<State<GameState>>){
     add_board(&mut commands, &mut meshes, &mut materials, &board_config);
     add_pieces(&mut commands, &mut meshes, &mut materials, &board_config, &checkers_state);
+    game_state.set(GameState::Input).unwrap();
 }
 
 

@@ -59,3 +59,4 @@ pub struct UpgradePieceEvent {
 pub struct VictoryEvent {
     pub winner: PieceColor
 }
+

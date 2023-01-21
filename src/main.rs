@@ -9,6 +9,7 @@ use logic::CheckersGameLogicPlugin;
 use checkers_events::CheckersEventsPlugin;
 use ai::CheckersAIPlugin;
 use sound::CheckersSoundPlugin;
+use menu::CheckersMenuPlugin;
 // use bevy::log::LogPlugin;
 
 mod rendering_3d;
@@ -20,6 +21,7 @@ mod checkers_events;
 mod ai;
 mod alphabeta;
 mod sound;
+mod menu;
 
 
 
@@ -34,7 +36,8 @@ fn main() {
             width: 1920.,
             height: 1080.,
             title: String::from("Checkers"),
-            mode: WindowMode::BorderlessFullscreen, ..default()
+            mode: WindowMode::BorderlessFullscreen,
+            ..default()
         },
         ..default()
     }))
@@ -46,7 +49,8 @@ fn main() {
     .add_plugin(CheckersInput3dPlugin)
     .add_plugin(CheckersEventsPlugin)
     .add_plugin(CheckersAIPlugin)
-    .add_plugin(CheckersSoundPlugin);
+    .add_plugin(CheckersSoundPlugin)
+    .add_plugin(CheckersMenuPlugin);
     // bevy_mod_debugdump::print_schedule(&mut app);
     app.run();
 }

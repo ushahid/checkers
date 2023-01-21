@@ -12,10 +12,10 @@ pub struct CheckersGameLogicPlugin;
 impl Plugin for CheckersGameLogicPlugin {
     fn build(&self, app: &mut App) {
         app
-        .insert_resource(PostAnimationState{state: GameState::Input})
+        .insert_resource(PostAnimationState{state: GameState::Menu})
         .insert_resource(InputMove{from: None, to: None})
         .insert_resource(PossibleMoves{moves: None})
-        .add_state(GameState::Input)
+        .add_state(GameState::Menu)
         .add_system_set(SystemSet::on_update(GameState::TryMove).with_system(handle_try_move))
         .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_move))
         .add_system(handle_game_over);
