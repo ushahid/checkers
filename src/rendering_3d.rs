@@ -2,8 +2,10 @@ use bevy::{prelude::*};
 use crate::{
     config::BoardConfig,
     state::*,
-    checkers_events::{PieceSelectEvent, PieceDeselectEvent, PieceMoveEvent, KillPieceEvent, UpgradePieceEvent, HighlightEntityEvent, RemoveHighlightEntityEvent}, logic::Position
+    checkers_events::*, logic::{Position, PostAnimationState}
 };
+
+use crate::logic;
 
 
 
@@ -15,16 +17,25 @@ impl Plugin for CheckersRendering3dPlugin {
         app
         .insert_resource(ClearColor(Color::BLACK))
         .add_startup_system(setup_board)
-        .add_system(handle_piece_selection)
         .add_system(handle_piece_deselection)
         .add_system(handle_add_highlight)
-        .add_system_set(SystemSet::on_update(GameState::Input).with_system(handle_remove_highlight))
-        .add_system_set(SystemSet::on_update(GameState::RestrictedInput).with_system(handle_remove_highlight))
-        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_move))
-        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_kill))
-        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_upgrade.after(handle_move)));
+        .add_system(handle_remove_highlight)
+        .add_system(handle_piece_selection.after(handle_move))
+        .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_move.after(logic::handle_move)))
+        .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_kill.after(logic::handle_move)))
+        .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_upgrade.after(handle_move)))
+        .add_system_to_stage(CoreStage::Last, cleanup_players_clips)
+        ;
     }
 }
+
+#[derive(Component)]
+struct PlayerData {
+    duration: f32,
+    clip: Handle<AnimationClip>,
+    despawn: bool
+}
+
 
 #[derive(Component)]
 pub struct Dim;
@@ -138,35 +149,31 @@ fn handle_upgrade(
 }
 
 
-fn handle_kill(mut commands: Commands, mut kill_event: EventReader<KillPieceEvent>, query: Query<(Entity, &PieceComponent)>){
-    for event in kill_event.iter(){
-        for (entity, piece_component) in query.iter(){
-            if piece_component.pos == event.pos {
-                commands.entity(entity).despawn_recursive();
-            }
-        }
-    }
-}
 
 
-
-fn handle_move(mut query: Query<(&mut Transform, &mut PieceComponent)>, mut move_event: EventReader<PieceMoveEvent>,  board_config: Res<BoardConfig>){
-    for event in move_event.iter(){
-        for (mut transform, mut piece_component) in query.iter_mut(){
-            if piece_component.pos == event.game_move.from {
-                let center = compute_piece_center(event.game_move.to.row, event.game_move.to.col, &board_config);
-                transform.translation.x = center.x;
-                transform.translation.y = center.y;
-                transform.translation.z = center.z;
-                piece_component.pos = event.game_move.to;
-            }
-        }
-    }
-}
+// fn handle_move(mut query: Query<&mut PieceComponent>, mut move_event: EventReader<PieceMoveEvent>){
+//     for event in move_event.iter(){
+//         for mut piece_component in query.iter_mut(){
+//             if piece_component.pos == event.game_move.from {
+//                 piece_component.pos = event.game_move.to;
+//             }
+//         }
+//     }
+// }
 
 
+// fn handle_kill(mut commands: Commands, mut kill_event: EventReader<KillPieceEvent>, query: Query<(Entity, &PieceComponent)>){
+//     for event in kill_event.iter(){
+//         for (entity, piece_component) in query.iter(){
+//             if piece_component.pos == event.pos {
+//                 commands.entity(entity).despawn_recursive();
+//             }
+//         }
+//     }
+// }
 
-fn compute_piece_center(row: usize, col: usize, board_config: &BoardConfig) -> Vec3{
+
+pub fn compute_piece_center(row: usize, col: usize, board_config: &BoardConfig) -> Vec3{
     let sq_dim: f32 = (board_config.world_dim - (board_config.border_size * 2.0)) / board_config.board_dim as f32;
     let scaled_sq_dim: f32 = board_config.piece_scale * sq_dim;
     let sq_offset_x = board_config.offset_x + board_config.border_size + col as f32 * sq_dim;
@@ -174,18 +181,6 @@ fn compute_piece_center(row: usize, col: usize, board_config: &BoardConfig) -> V
     let sq_center_x = sq_offset_x + (((1. - board_config.piece_scale) / 2.0) * sq_dim) + scaled_sq_dim / 2.0;
     let sq_center_z = sq_offset_z + (((1. - board_config.piece_scale) / 2.0) * sq_dim) + scaled_sq_dim / 2.0;
     return Vec3 {x: sq_center_x, y: (board_config.board_height + board_config.piece_height) / 2.0, z: sq_center_z}
-}
-
-
-fn handle_piece_selection(mut query: Query<(&mut Transform, &PieceComponent)>, board_config: Res<BoardConfig>, mut ev: EventReader<PieceSelectEvent>){
-    for event in ev.iter(){
-        // info!("Selection event: {:?}", event.pos);
-        for (mut transform, piece_component) in query.iter_mut(){
-            if piece_component.pos == event.pos {
-                transform.translation.y = ((board_config.board_height + board_config.piece_height) / 2.0) + board_config.piece_hover_height;
-            }
-        }
-    }
 }
 
 
@@ -345,6 +340,176 @@ fn add_board(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materia
                     ..default()
                 }).insert(BoardSquareComponent{pos: Position::new(z, x)}).id();
                 commands.entity(board).push_children(&[child]);
+            }
+        }
+    }
+}
+ 
+
+
+
+fn cleanup_players_clips (
+    mut commands: Commands,
+    query: Query<(Entity, &AnimationPlayer)>,
+    player_data_query: Query<&PlayerData>,
+    mut animation_assets: ResMut<Assets<AnimationClip>>,
+    mut game_state: ResMut<State<GameState>>,
+    post_animation_state: Res<PostAnimationState>
+) {
+    if *game_state.current() == GameState::Animating {
+        let mut running = false;
+        for (entity, player) in query.iter() {
+            let data = player_data_query.get(entity).unwrap();
+            if player.elapsed() > data.duration{
+                commands.entity(entity).remove::<AnimationPlayer>();
+                commands.entity(entity).remove::<PlayerData>();
+                animation_assets.remove(data.clip.clone());
+                if data.despawn {
+                    commands.entity(entity).despawn_recursive();
+                }
+            } else {
+                running = true;
+                info!("Animations are running");
+            }
+        }
+    
+        if !running {
+            info!("Animation complete");
+            game_state.set(post_animation_state.state.clone()).unwrap();
+        }
+
+    }
+}
+
+
+fn create_translation_clip(entity: &Entity, duration: f32, translations: &Vec<Vec3>) -> AnimationClip {
+    // Create entity path from ID
+    let mut parts = Vec::<Name>::new();
+    parts.push(Name::new(format!("{:?}", entity)));
+    let entity_path = EntityPath{parts};
+
+    // Create keyframes and timesteps
+    let mut keyframes_vec = Vec::new();
+    for  i in 0..translations.len(){
+        keyframes_vec.push(translations[i]);
+    }
+
+    let mut kf_timestamps = Vec::new();
+    for  i in 0..keyframes_vec.len(){
+        kf_timestamps.push((i as f32 / keyframes_vec.len() as f32) * duration);
+    }
+
+    // Build cilp
+    let keyframes = Keyframes::Translation(keyframes_vec);
+    let mut clip = AnimationClip::default();
+    clip.add_curve_to_path(entity_path, VariableCurve{keyframe_timestamps: kf_timestamps, keyframes});
+    return clip;
+}
+
+
+fn handle_piece_selection(
+    mut commands: Commands,
+    mut ev: EventReader<PieceSelectEvent>,
+    mut query: Query<(Entity, &PieceComponent)>,
+    board_config: Res<BoardConfig>,
+    mut animation_assets: ResMut<Assets<AnimationClip>>,
+){
+    for event in ev.iter(){
+        for (entity, piece_component) in query.iter_mut() {
+            if piece_component.pos == event.pos {
+                let translation = compute_piece_center(piece_component.pos.row, piece_component.pos.col, &board_config);
+
+                let duration: f32 = 0.2;
+                let clip = create_translation_clip(
+                    &entity,
+                    duration, 
+                    &vec![translation, Vec3{x: translation.x, y: translation.y + board_config.piece_hover_height, z: translation.z}]
+                );
+                let handle = animation_assets.add(clip);
+                let  mut player = AnimationPlayer::default();
+                player.play(handle.clone());
+                commands.entity(entity).insert(PlayerData{duration: duration, clip: handle.clone(), despawn: false});
+                commands.entity(entity).insert(player);
+            }
+        }
+    }
+}
+
+
+
+fn handle_move(
+    mut commands: Commands,
+    mut move_event: EventReader<PieceMoveEvent>,
+    mut query: Query<(Entity, &mut Transform, &mut PieceComponent)>,
+    board_config: Res<BoardConfig>,
+    mut animation_assets: ResMut<Assets<AnimationClip>>
+){
+    for event in move_event.iter() {
+        info!("Handling move!");
+        for (entity, transform, mut piece_component) in query.iter_mut(){
+            if piece_component.pos == event.game_move.from {
+                piece_component.pos = event.game_move.to;
+                let center = compute_piece_center(event.game_move.to.row, event.game_move.to.col, &board_config);
+                let translation = transform.translation;
+                let is_jump = event.game_move.is_jump();
+                let duration: f32 = match is_jump {
+                    true => {1.},
+                    false => {0.5}
+                };
+
+                
+                let clip = match is_jump{
+                    true => {
+                        create_translation_clip(
+                            &entity,
+                            duration, 
+                            &vec![translation, Vec3{x: center.x, y: center.y + 1., z: center.z}, center]
+                        )
+                    },
+                    false => {
+                        create_translation_clip(
+                            &entity,
+                            duration, 
+                            &vec![translation, center]
+                        )
+                    },
+                };
+
+                let handle = animation_assets.add(clip);
+                let  mut player = AnimationPlayer::default();
+                player.play(handle.clone());
+                commands.entity(entity).insert(PlayerData{duration: duration, clip: handle.clone(), despawn: false});
+                commands.entity(entity).insert(player);
+            }
+        }
+    }
+}
+
+
+fn handle_kill(
+    mut commands: Commands,
+    mut kill_event: EventReader<KillPieceEvent>,
+    query: Query<(Entity, &Transform, &PieceComponent)>,
+    board_config: Res<BoardConfig>,
+    mut animation_assets: ResMut<Assets<AnimationClip>>
+){
+    for event in kill_event.iter(){
+        for (entity, transform, piece_component) in query.iter(){
+            if piece_component.pos == event.pos {          
+                let translation = transform.translation;
+                let duration: f32 = 0.3;
+                let clip = create_translation_clip(
+                    &entity,
+                    duration, 
+                    &vec![translation, Vec3{  x: translation.x,
+                                                            y: translation.y - (board_config.piece_height + 0.02),
+                                                            z: translation.z }]
+                );
+                let handle = animation_assets.add(clip);
+                let  mut player = AnimationPlayer::default();
+                player.play(handle.clone());
+                commands.entity(entity).insert(PlayerData{duration: duration, clip: handle.clone(), despawn: true});
+                commands.entity(entity).insert(player);
             }
         }
     }

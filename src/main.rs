@@ -19,6 +19,7 @@ mod checkers_events;
 mod ai;
 mod alphabeta;
 mod sound;
+// mod animation_3d;
 
 
 fn main() {

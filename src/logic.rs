@@ -12,6 +12,7 @@ pub struct CheckersGameLogicPlugin;
 impl Plugin for CheckersGameLogicPlugin {
     fn build(&self, app: &mut App) {
         app
+        .insert_resource(PostAnimationState{state: GameState::Input})
         .insert_resource(InputMove{from: None, to: None})
         .insert_resource(PossibleMoves{moves: None})
         .add_state(GameState::Input)
@@ -19,6 +20,12 @@ impl Plugin for CheckersGameLogicPlugin {
         .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_move))
         .add_system_set(SystemSet::on_update(GameState::GameOver).with_system(handle_game_over));
     }
+}
+
+
+#[derive(Resource)]
+pub struct PostAnimationState {
+    pub state: GameState
 }
 
 
@@ -143,7 +150,7 @@ fn handle_try_move(
 }
 
 
-fn handle_move(
+pub fn handle_move(
     mut move_event: EventReader<PieceMoveEvent>,
     mut checkers_state: ResMut<CheckersState>,
     mut game_state: ResMut<State<GameState>>,
@@ -151,7 +158,8 @@ fn handle_move(
     mut upgrade_writer: EventWriter<UpgradePieceEvent>,
     ai_status: Res<AIStatus>,
     mut possible_moves: ResMut<PossibleMoves>,
-    mut win_writer: EventWriter<VictoryEvent>
+    mut win_writer: EventWriter<VictoryEvent>,
+    mut post_animation_state: ResMut<PostAnimationState>
 ){
     for ev in move_event.iter(){
         let (capture_pos, is_upgrade, next_capture_moves) = checkers_state.update_with_move(&ev.game_move);
@@ -179,16 +187,17 @@ fn handle_move(
                 PieceColor::Red => PieceColor::Black
             };
             win_writer.send(VictoryEvent{ winner });
-            game_state.set(GameState::GameOver).unwrap();
+            post_animation_state.state = GameState::GameOver;
         } else {
             if ai_status.enabled{
                 match checkers_state.turn {
-                    PieceColor::Red => game_state.set(GameState::AIMove).unwrap(),
-                    PieceColor::Black => game_state.set(next_input_state).unwrap()
+                    PieceColor::Red => {post_animation_state.state = GameState::AIMove},
+                    PieceColor::Black => {post_animation_state.state = next_input_state}
                 }
             } else {
-                game_state.set(next_input_state).unwrap();
+                post_animation_state.state = next_input_state
             }
         }
+        game_state.set(GameState::Animating).unwrap();
     }
 }

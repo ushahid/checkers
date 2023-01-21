@@ -8,7 +8,8 @@ pub enum GameState {
     Move,
     RestrictedInput,
     AIMove,
-    GameOver
+    GameOver,
+    Animating
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
