@@ -1,16 +1,20 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, tasks::AsyncComputeTaskPool, tasks::Task};
 use crate::{logic::{Move, Position}, state::{GameState, CheckersState, PieceType, PieceColor}, checkers_events::TryMoveEvent, alphabeta::{minimax_alpha_beta, TwoPlayerGameState}};
-use std::collections::VecDeque;
+use std::{collections::VecDeque};
+use futures_lite::future;
 
 
 pub struct CheckersAIPlugin;
+
 
 
 impl Plugin for CheckersAIPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(AIMoves{moves: VecDeque::<Move>::new()})
         .insert_resource(AIStatus{enabled: true})
-        .add_system_set(SystemSet::on_update(GameState::AIMove).with_system(make_ai_move));
+        .add_system_set(SystemSet::on_enter(GameState::AIMove).with_system(queue_compute_move))
+        .add_system_set(SystemSet::on_update(GameState::AIMove).with_system(make_ai_move.after(add_ai_move)))
+        .add_system_set(SystemSet::on_update(GameState::AIMove).with_system(add_ai_move));
     }
 }
 
@@ -26,25 +30,57 @@ struct AIMoves {
     moves: VecDeque<Move>
 }
 
+#[derive(Component)]
+struct ComputeMove {
+    task: Task<Vec<Move>>
+}
 
-fn make_ai_move(mut ai_moves: ResMut<AIMoves>, mut trymove_writer: EventWriter<TryMoveEvent>, mut game_state: ResMut<State<GameState>>, checkers_state: Res<CheckersState>){
-    if let Some(m) = ai_moves.moves.pop_front() {
-        game_state.set(GameState::TryMove).unwrap();
-        trymove_writer.send(TryMoveEvent{
-            game_move: m
+
+fn queue_compute_move(mut commands: Commands, ai_moves: Res<AIMoves>, checkers_state: Res<CheckersState>){
+    if ai_moves.moves.len() == 0 {
+        info!("Queueing up compute move");
+        let pool = AsyncComputeTaskPool::get();
+        let state_clone = checkers_state.clone();
+        let task: Task<Vec<Move>> = pool.spawn(async move {
+            find_best_moves(&state_clone)
         });
-    } else {
-        info!("Finding best move");
-        for m in find_best_moves(&checkers_state){
-            ai_moves.moves.push_back(m);
+        commands.spawn(ComputeMove{task});
+    }
+}
+
+
+fn add_ai_move(
+    mut commands: Commands,
+    mut compute_tasks: Query<(Entity, &mut ComputeMove)>,
+    mut ai_moves: ResMut<AIMoves>
+){
+    for (entity, mut compute_task) in &mut compute_tasks{
+        if let Some(best_moves) = future::block_on(future::poll_once(&mut compute_task.task)){
+            for m in best_moves {
+                ai_moves.moves.push_back(m);
+            }
+            commands.entity(entity).remove::<ComputeMove>();
         }
     }
 }
 
 
+fn make_ai_move(
+    mut ai_moves: ResMut<AIMoves>,
+    mut trymove_writer: EventWriter<TryMoveEvent>,
+    mut game_state: ResMut<State<GameState>>,
+){
+    if let Some(m) = ai_moves.moves.pop_front() {
+        game_state.set(GameState::TryMove).unwrap();
+        trymove_writer.send(TryMoveEvent{
+            game_move: m
+        });
+    }
+}
+
+
 fn find_best_moves(state: &CheckersState) -> Vec<Move>{
-    let (_, best_move) = minimax_alpha_beta(state, 10, f32::NEG_INFINITY, f32::INFINITY, true, &state.turn);
-    info!("Best move: {:?}", best_move);
+    let (_, best_move) = minimax_alpha_beta(state, 15, f32::NEG_INFINITY, f32::INFINITY, true, &state.turn);
     return best_move.unwrap();
 }
 

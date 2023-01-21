@@ -149,30 +149,6 @@ fn handle_upgrade(
 }
 
 
-
-
-// fn handle_move(mut query: Query<&mut PieceComponent>, mut move_event: EventReader<PieceMoveEvent>){
-//     for event in move_event.iter(){
-//         for mut piece_component in query.iter_mut(){
-//             if piece_component.pos == event.game_move.from {
-//                 piece_component.pos = event.game_move.to;
-//             }
-//         }
-//     }
-// }
-
-
-// fn handle_kill(mut commands: Commands, mut kill_event: EventReader<KillPieceEvent>, query: Query<(Entity, &PieceComponent)>){
-//     for event in kill_event.iter(){
-//         for (entity, piece_component) in query.iter(){
-//             if piece_component.pos == event.pos {
-//                 commands.entity(entity).despawn_recursive();
-//             }
-//         }
-//     }
-// }
-
-
 pub fn compute_piece_center(row: usize, col: usize, board_config: &BoardConfig) -> Vec3{
     let sq_dim: f32 = (board_config.world_dim - (board_config.border_size * 2.0)) / board_config.board_dim as f32;
     let scaled_sq_dim: f32 = board_config.piece_scale * sq_dim;
@@ -369,7 +345,6 @@ fn cleanup_players_clips (
                 }
             } else {
                 running = true;
-                info!("Animations are running");
             }
         }
     
@@ -453,8 +428,8 @@ fn handle_move(
                 let translation = transform.translation;
                 let is_jump = event.game_move.is_jump();
                 let duration: f32 = match is_jump {
-                    true => {1.},
-                    false => {0.5}
+                    true => {0.6},
+                    false => {0.4}
                 };
 
                 

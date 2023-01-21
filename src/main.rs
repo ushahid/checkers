@@ -9,6 +9,7 @@ use logic::CheckersGameLogicPlugin;
 use checkers_events::CheckersEventsPlugin;
 use ai::CheckersAIPlugin;
 use sound::CheckersSoundPlugin;
+use bevy::log::LogPlugin;
 
 mod rendering_3d;
 mod input_3d;
@@ -19,32 +20,35 @@ mod checkers_events;
 mod ai;
 mod alphabeta;
 mod sound;
-// mod animation_3d;
+
 
 
 fn main() {
     let board_config = BoardConfig{..default()};
     let checkers_state = CheckersState::new(board_config.board_dim);
-    App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
-                width: 1920.,
-                height: 1080.,
-                title: String::from("Checkers"),
-                mode: WindowMode::BorderlessFullscreen, ..default()
-            },
-            ..default()
-        }))
-        .insert_resource(board_config)
-        .insert_resource(checkers_state)
-        .add_startup_system(setup)
-        .add_plugin(CheckersGameLogicPlugin)
-        .add_plugin(CheckersRendering3dPlugin)
-        .add_plugin(CheckersInput3dPlugin)
-        .add_plugin(CheckersEventsPlugin)
-        .add_plugin(CheckersAIPlugin)
-        .add_plugin(CheckersSoundPlugin)
-        .run();
+    let mut app = App::new();
+    app
+    .add_plugins(DefaultPlugins//.build().disable::<LogPlugin>()
+        .set(WindowPlugin {
+        window: WindowDescriptor {
+            width: 1920.,
+            height: 1080.,
+            title: String::from("Checkers"),
+            mode: WindowMode::BorderlessFullscreen, ..default()
+        },
+        ..default()
+    }))
+    .insert_resource(board_config)
+    .insert_resource(checkers_state)
+    .add_startup_system(setup)
+    .add_plugin(CheckersGameLogicPlugin)
+    .add_plugin(CheckersRendering3dPlugin)
+    .add_plugin(CheckersInput3dPlugin)
+    .add_plugin(CheckersEventsPlugin)
+    .add_plugin(CheckersAIPlugin)
+    .add_plugin(CheckersSoundPlugin);
+    // bevy_mod_debugdump::print_schedule(&mut app);
+    app.run();
 }
 
 
