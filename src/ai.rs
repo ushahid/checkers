@@ -56,6 +56,7 @@ fn add_ai_move(
 ){
     for (entity, mut compute_task) in &mut compute_tasks{
         if let Some(best_moves) = future::block_on(future::poll_once(&mut compute_task.task)){
+            info!("Move computed");
             for m in best_moves {
                 ai_moves.moves.push_back(m);
             }
@@ -71,6 +72,7 @@ fn make_ai_move(
     mut game_state: ResMut<State<GameState>>,
 ){
     if let Some(m) = ai_moves.moves.pop_front() {
+        info!("Adding move");
         game_state.set(GameState::TryMove).unwrap();
         trymove_writer.send(TryMoveEvent{
             game_move: m
@@ -80,7 +82,7 @@ fn make_ai_move(
 
 
 fn find_best_moves(state: &CheckersState) -> Vec<Move>{
-    let (_, best_move) = minimax_alpha_beta(state, 15, f32::NEG_INFINITY, f32::INFINITY, true, &state.turn);
+    let (_, best_move) = minimax_alpha_beta(state, 10, f32::NEG_INFINITY, f32::INFINITY, true, &state.turn);
     return best_move.unwrap();
 }
 

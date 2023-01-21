@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 bevy = {version = "0.9.1", features = ["mp3"]}
-bevy_mod_debugdump = "0.6.0"
+# bevy_mod_debugdump = "0.6.0"
 bevy_mod_picking = "0.11.0"
 futures-lite = "1.12.0"

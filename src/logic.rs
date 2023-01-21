@@ -18,7 +18,7 @@ impl Plugin for CheckersGameLogicPlugin {
         .add_state(GameState::Input)
         .add_system_set(SystemSet::on_update(GameState::TryMove).with_system(handle_try_move))
         .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_move))
-        .add_system_set(SystemSet::on_update(GameState::GameOver).with_system(handle_game_over));
+        .add_system(handle_game_over);
     }
 }
 
@@ -186,7 +186,7 @@ pub fn handle_move(
                 PieceColor::Black => PieceColor::Red,
                 PieceColor::Red => PieceColor::Black
             };
-            win_writer.send(VictoryEvent{ winner });
+            win_writer.send(VictoryEvent { winner });
             post_animation_state.state = GameState::GameOver;
         } else {
             if ai_status.enabled{

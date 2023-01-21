@@ -9,7 +9,7 @@ use logic::CheckersGameLogicPlugin;
 use checkers_events::CheckersEventsPlugin;
 use ai::CheckersAIPlugin;
 use sound::CheckersSoundPlugin;
-use bevy::log::LogPlugin;
+// use bevy::log::LogPlugin;
 
 mod rendering_3d;
 mod input_3d;

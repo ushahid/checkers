@@ -4,8 +4,7 @@ use crate::{
     state::*,
     checkers_events::*, logic::{Position, PostAnimationState}
 };
-
-use crate::logic;
+use std::f32::consts::PI;
 
 
 
@@ -21,10 +20,10 @@ impl Plugin for CheckersRendering3dPlugin {
         .add_system(handle_add_highlight)
         .add_system(handle_remove_highlight)
         .add_system(handle_piece_selection.after(handle_move))
-        .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_move.after(logic::handle_move)))
-        .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_kill.after(logic::handle_move)))
-        .add_system_set(SystemSet::on_update(GameState::Move).with_system(handle_upgrade.after(handle_move)))
-        .add_system_to_stage(CoreStage::Last, cleanup_players_clips)
+        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_move))
+        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_kill))
+        .add_system_set(SystemSet::on_exit(GameState::Move).with_system(handle_upgrade.after(handle_move)))
+        .add_system_set(SystemSet::on_update(GameState::Animating).with_system(cleanup_players_clips))
         ;
     }
 }
@@ -330,7 +329,7 @@ fn cleanup_players_clips (
     player_data_query: Query<&PlayerData>,
     mut animation_assets: ResMut<Assets<AnimationClip>>,
     mut game_state: ResMut<State<GameState>>,
-    post_animation_state: Res<PostAnimationState>
+    mut post_animation_state: ResMut<PostAnimationState>
 ) {
     if *game_state.current() == GameState::Animating {
         let mut running = false;
@@ -350,7 +349,9 @@ fn cleanup_players_clips (
     
         if !running {
             info!("Animation complete");
+            info!("{:?}", post_animation_state.state);
             game_state.set(post_animation_state.state.clone()).unwrap();
+            post_animation_state.state = GameState::Input;
         }
 
     }
@@ -397,7 +398,7 @@ fn handle_piece_selection(
                 let duration: f32 = 0.2;
                 let clip = create_translation_clip(
                     &entity,
-                    duration, 
+                    duration,
                     &vec![translation, Vec3{x: translation.x, y: translation.y + board_config.piece_hover_height, z: translation.z}]
                 );
                 let handle = animation_assets.add(clip);
@@ -435,10 +436,24 @@ fn handle_move(
                 
                 let clip = match is_jump{
                     true => {
+                        let mid_pos = event.game_move.middle_pos().unwrap();
+                        let source_center = compute_piece_center(event.game_move.from.row, event.game_move.from.col, &board_config);
+                        let mid_center =  compute_piece_center(mid_pos.row, mid_pos.col, &board_config);
+
+                        let mut points = Vec::<Vec3>::new();
+                        const NUM_STEPS: i32 = 20;
+                        let mut t = Transform::from_translation(source_center);
+                        t.look_at(mid_center, Vec3::Y);
+                         for _ in 0..NUM_STEPS {
+                             t.translate_around(mid_center, Quat::from_axis_angle(-t.local_x(), PI / NUM_STEPS as f32));
+                             points.push(t.transform_point(Vec3::ZERO));
+                        }
+
+                        
                         create_translation_clip(
                             &entity,
                             duration, 
-                            &vec![translation, Vec3{x: center.x, y: center.y + 1., z: center.z}, center]
+                            &points
                         )
                     },
                     false => {
