@@ -15,10 +15,10 @@ American checkers game written in bevy / rust, featuring:
 ```
 cargo run --release
 ```
+- Press Esc at any point in the game to exit
 
 ## ToDo
 - Final refactor
 
 ## Credits
 - Sound effects obtained from https://www.zapsplat.com
-
