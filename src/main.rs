@@ -10,7 +10,7 @@ use checkers_events::CheckersEventsPlugin;
 use ai::CheckersAIPlugin;
 use sound::CheckersSoundPlugin;
 use menu::CheckersMenuPlugin;
-// use bevy::log::LogPlugin;
+use bevy::log::LogPlugin;
 
 mod rendering_3d;
 mod input_3d;
@@ -30,7 +30,8 @@ fn main() {
     let checkers_state = CheckersState::new(board_config.board_dim);
     let mut app = App::new();
     app
-    .add_plugins(DefaultPlugins//.build().disable::<LogPlugin>()
+    .add_plugins(DefaultPlugins
+        .build().disable::<LogPlugin>()
         .set(WindowPlugin {
         window: WindowDescriptor {
             width: 1920.,
