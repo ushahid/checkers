@@ -5,7 +5,7 @@ American checkers game written in bevy / rust, featuring:
  - Audio
 
 
-![Screenshot](https://github.com/ushahid/checkers/blob/main/assets/images/logo.png)
+![Screenshot](https://github.com/ushahid/checkers/blob/main/media/screenshot.png)
 
 ## Setup
 - Clone the repo
