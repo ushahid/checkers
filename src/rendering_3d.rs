@@ -334,34 +334,31 @@ fn cleanup_players_clips (
     mut pc_query: Query<(&mut Transform, &mut PieceComponent)>,
     board_config: Res<BoardConfig>
 ) {
-    if *game_state.current() == GameState::Animating {
-        let mut running = false;
-        for (entity, player) in query.iter() {
-            let data = player_data_query.get(entity).unwrap();
-            if player.elapsed() > data.duration{
-                commands.entity(entity).remove::<AnimationPlayer>();
-                commands.entity(entity).remove::<PlayerData>();
-                animation_assets.remove(data.clip.clone());
-                if data.despawn {
-                    commands.entity(entity).despawn_recursive();
-                }
-            } else {
-                running = true;
+    let mut running = false;
+    for (entity, player) in query.iter() {
+        let data = player_data_query.get(entity).unwrap();
+        if player.elapsed() > data.duration{
+            commands.entity(entity).remove::<AnimationPlayer>();
+            commands.entity(entity).remove::<PlayerData>();
+            animation_assets.remove(data.clip.clone());
+            if data.despawn {
+                commands.entity(entity).despawn_recursive();
             }
+        } else {
+            running = true;
         }
-    
-        if !running {
-            info!("Animation complete");
-            info!("{:?}", post_animation_state.state);
-            game_state.set(post_animation_state.state.clone()).unwrap();
-            post_animation_state.state = GameState::Input;
+    }
 
-            for (mut transform, piece_component) in &mut pc_query{
-                let translation = compute_piece_center(piece_component.pos.row, piece_component.pos.col, &board_config);
-                transform.translation = translation;
-            }
+    if !running {
+        info!("Animation complete");
+        info!("{:?}", post_animation_state.state);
+        game_state.set(post_animation_state.state.clone()).unwrap();
+        post_animation_state.state = GameState::Input;
+
+        for (mut transform, piece_component) in &mut pc_query{
+            let translation = compute_piece_center(piece_component.pos.row, piece_component.pos.col, &board_config);
+            transform.translation = translation;
         }
-
     }
 }
 
