@@ -330,7 +330,9 @@ fn cleanup_players_clips (
     player_data_query: Query<&PlayerData>,
     mut animation_assets: ResMut<Assets<AnimationClip>>,
     mut game_state: ResMut<State<GameState>>,
-    mut post_animation_state: ResMut<PostAnimationState>
+    mut post_animation_state: ResMut<PostAnimationState>,
+    mut pc_query: Query<(&mut Transform, &mut PieceComponent)>,
+    board_config: Res<BoardConfig>
 ) {
     if *game_state.current() == GameState::Animating {
         let mut running = false;
@@ -353,6 +355,11 @@ fn cleanup_players_clips (
             info!("{:?}", post_animation_state.state);
             game_state.set(post_animation_state.state.clone()).unwrap();
             post_animation_state.state = GameState::Input;
+
+            for (mut transform, piece_component) in &mut pc_query{
+                let translation = compute_piece_center(piece_component.pos.row, piece_component.pos.col, &board_config);
+                transform.translation = translation;
+            }
         }
 
     }
@@ -430,8 +437,8 @@ fn handle_move(
                 let translation = transform.translation;
                 let is_jump = event.game_move.is_jump();
                 let duration: f32 = match is_jump {
-                    true => {0.6},
-                    false => {0.4}
+                    true => {0.8},
+                    false => {0.5}
                 };
 
                 
