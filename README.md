@@ -1,6 +1,6 @@
 # Checkers
 American checkers game written in Rust / Bevy, featuring:
- - AI with minmax and alpha beta pruning
+ - AI with minimax and alpha beta pruning
  - Menus, animations
  - Audio
 
