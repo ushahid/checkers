@@ -1,4 +1,4 @@
-# checker
+# Checkers
 American checkers game written in bevy / rust, featuring:
  - AI with minmax and alpha beta pruning
  - Menus, animations
@@ -22,3 +22,4 @@ cargo run --release
 
 ## Credits
 - Sound effects obtained from https://www.zapsplat.com
+- Fonts are from https://www.fontspace.com/
