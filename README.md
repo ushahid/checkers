@@ -7,11 +7,10 @@ American checkers game written in bevy / rust, featuring:
 
 ![Screenshot](https://github.com/ushahid/checkers/blob/main/assets/images/logo.png)
 
-## 
-Setup
+## Setup
 - Clone the repo
 - Install rust, using rustup https://www.rust-lang.org/tools/install
-- Open a terminal and go to the repo
+- Navigate to the repository root in a terminal
 - Run the following command to build and run the game
 ```
 cargo run --release
@@ -19,3 +18,7 @@ cargo run --release
 
 ## ToDo
 - Final refactor
+
+## Credits
+- Sound effects obtained from https://www.zapsplat.com
+
