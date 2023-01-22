@@ -198,7 +198,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     })
                     .with_children(|parent| {
                         parent.spawn(TextBundle::from_section(
-                            "Against CPU",
+                            "Against AI",
                             TextStyle {
                                 font: button_font.clone(),
                                 font_size: BUTTON_FONT_SIZE,
