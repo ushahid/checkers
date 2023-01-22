@@ -45,7 +45,7 @@ impl CheckersState {
         for row in 0..dim {
             let mut board_row = Vec::<Option<CheckersPiece>>::new();
             for col in 0..dim {
-                if (row + (col % 2)) % 2 == 0 {
+                if (row + (col % 2)) % 2 == 1 {
                     if (row as f32) < dim as f32 / 2.0 - 1. {
                         board_row.push(Some(CheckersPiece {col: PieceColor::Red, typ: PieceType::Man}));
                     } else if (row as f32) > dim as f32 / 2.0 {

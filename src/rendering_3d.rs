@@ -300,7 +300,7 @@ fn add_board(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materia
     // draw the squares
     for z in 0..board_config.board_dim {
         for x in 0..board_config.board_dim {
-            if (x + (z % 2)) % 2 == 0 {
+            if (x + (z % 2)) % 2 == 1 {
                 let sq_offset_x = board_config.offset_x + board_config.border_size + x as f32 * sq_dim;
                 let sq_offset_z = board_config.offset_z + board_config.border_size + z as f32 * sq_dim;
                 let child = commands.spawn(PbrBundle {

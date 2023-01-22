@@ -6,6 +6,8 @@ pub struct CheckersEventsPlugin;
 impl Plugin for CheckersEventsPlugin {
     fn build(&self, app: &mut App){
         app
+        .add_event::<ButtonSelectEvent>()
+        .add_event::<InvalidMoveEvent>()
         .add_event::<VictoryEvent>()
         .add_event::<HighlightEntityEvent>()
         .add_event::<RemoveHighlightEntityEvent>()
@@ -59,4 +61,8 @@ pub struct UpgradePieceEvent {
 pub struct VictoryEvent {
     pub winner: PieceColor
 }
+
+pub struct ButtonSelectEvent;
+
+pub struct InvalidMoveEvent;
 

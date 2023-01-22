@@ -84,6 +84,7 @@ impl Move {
 
 
 fn handle_game_over(mut win_reader: EventReader<VictoryEvent>){
+
     for ev in win_reader.iter() {
         match ev.winner {
             PieceColor::Black => info!{"Black Won!"},
@@ -122,6 +123,7 @@ fn handle_try_move(
     mut trymove_event: EventReader<TryMoveEvent>,
     checkers_state: Res<CheckersState>,
     mut move_writer: EventWriter<PieceMoveEvent>,
+    mut invalid_writer: EventWriter<InvalidMoveEvent>,
     mut game_state: ResMut<State<GameState>>,
     possible_moves: Res<PossibleMoves>
 ){
@@ -133,12 +135,14 @@ fn handle_try_move(
         
         let is_valid: bool = is_valid_move(&ev.game_move, &checkers_state, move_from);
         if !is_valid{
+            invalid_writer.send(InvalidMoveEvent);
             info!("Invalid move {:?}", ev.game_move);
             if possible_moves.moves.is_some(){
                 game_state.set(GameState::RestrictedInput).unwrap();
             } else {
                 game_state.set(GameState::Input).unwrap();
             }
+
         } else {
             info!("Valid move {:?}", ev.game_move);
             move_writer.send(PieceMoveEvent{

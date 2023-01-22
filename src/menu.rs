@@ -2,8 +2,7 @@
 
 use bevy::prelude::*;
 
-use crate::{state::GameState, ai::AIStatus};
-
+use crate::{state::GameState, ai::AIStatus, checkers_events::ButtonSelectEvent};
 
 
 pub struct CheckersMenuPlugin;
@@ -48,7 +47,8 @@ fn button_system(
     button_color: Res<ButtonColor>,
     text_query: Query<&Name>,
     mut game_state: ResMut<State<GameState>>,
-    mut ai_status: ResMut<AIStatus>
+    mut ai_status: ResMut<AIStatus>,
+    mut select_event: EventWriter<ButtonSelectEvent>
 ) {
     for (interaction, mut color, children) in &mut interaction_query {
         let text = text_query.get(children[0]).unwrap();
@@ -60,6 +60,7 @@ fn button_system(
                 *color = button_color.0.into();
             },
             Interaction::Clicked => {
+                select_event.send(ButtonSelectEvent);
                 match text.as_str() {
                     "HUMAN" => {
                         ai_status.enabled = false;
