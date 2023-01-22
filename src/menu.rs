@@ -105,7 +105,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .with_children(|parent| {
                 parent.spawn(NodeBundle {
                     style: Style {
-                        size: Size::new(Val::Percent(30.0), Val::Percent(50.0)),
+                        size: Size::new(Val::Percent(30.0), Val::Auto),
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::Center,
                         ..default()
