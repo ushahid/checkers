@@ -1,9 +1,7 @@
 # Checkers
-American checkers game written in Rust / Bevy, featuring:
+American checkers written in Rust / Bevy, featuring:
  - AI with minimax and alpha beta pruning
- - Menus, animations
- - Audio
-
+ - Menus, animations, audio etc.
 
 ![Screenshot](https://github.com/ushahid/checkers/blob/main/media/screenshot.png)
 
@@ -16,6 +14,10 @@ American checkers game written in Rust / Bevy, featuring:
 cargo run --release
 ```
 - Press Esc at any point in the game to exit
+
+## Rules
+[American Checkers Rules](https://www.thesprucecrafts.com/play-checkers-using-standard-rules-409287)
+
 
 ## ToDo
 - Final refactor
