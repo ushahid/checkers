@@ -377,7 +377,7 @@ fn create_translation_clip(entity: &Entity, duration: f32, translations: &Vec<Ve
 
     let mut kf_timestamps = Vec::new();
     for  i in 0..keyframes_vec.len(){
-        kf_timestamps.push((i as f32 / keyframes_vec.len() as f32) * duration);
+        kf_timestamps.push(((i + 1) as f32 / keyframes_vec.len() as f32) * duration);
     }
 
     // Build cilp
