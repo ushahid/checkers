@@ -26,7 +26,7 @@ mod menu;
 
 
 fn main() {
-    let board_config = BoardConfig{..default()};
+    let board_config = BoardConfig::default();
     let checkers_state = CheckersState::new(board_config.board_dim);
     let mut app = App::new();
     app

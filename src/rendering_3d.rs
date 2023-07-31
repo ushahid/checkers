@@ -434,8 +434,8 @@ fn handle_move(
                 let translation = transform.translation;
                 let is_jump = event.game_move.is_jump();
                 let duration: f32 = match is_jump {
-                    true => {0.8},
-                    false => {0.5}
+                    true => {0.6},
+                    false => {0.35}
                 };
 
                 
