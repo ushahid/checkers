@@ -8,6 +8,7 @@ American checkers written in Rust / Bevy, featuring:
 ## Setup
 - Clone the repo
 - Install rust, using rustup https://www.rust-lang.org/tools/install
+- Install bevy [dependencies](https://github.com/bevyengine/bevy/blob/main/docs/linux_dependencies.md)
 - Navigate to the repository root in a terminal
 - Run the following command to build and run the game
 ```
