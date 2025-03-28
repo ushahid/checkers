@@ -37,7 +37,7 @@ fn main() {
             width: 1920.,
             height: 1080.,
             title: String::from("Checkers"),
-            mode: WindowMode::BorderlessFullscreen,
+            mode: WindowMode::Windowed,
             ..default()
         },
         ..default()
